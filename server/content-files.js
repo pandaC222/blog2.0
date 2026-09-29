@@ -294,7 +294,19 @@ export function listAlbums() {
 export function saveAlbum(id, info) {
 	const dir = albumDir(id);
 	fs.mkdirSync(dir.abs, { recursive: true });
+	const infoPath = path.join(dir.abs, "info.json");
+	// 表单没覆盖的字段（外链相册的 mode、cover、photos 等）从原文件里保留下来。
+	let keep = {};
+	if (fs.existsSync(infoPath)) {
+		try {
+			const raw = JSON.parse(fs.readFileSync(infoPath, "utf8"));
+			if (raw && typeof raw === "object") keep = raw;
+		} catch {
+			/* 原 info.json 损坏时直接重建 */
+		}
+	}
 	const next = {
+		...keep,
 		title: info?.title || dir.id,
 		description: info?.description || "",
 		date: info?.date || "",
@@ -304,7 +316,7 @@ export function saveAlbum(id, info) {
 		columns: Number(info?.columns || 3),
 		hidden: Boolean(info?.hidden),
 	};
-	fs.writeFileSync(path.join(dir.abs, "info.json"), `${JSON.stringify(next, null, 2)}\n`, "utf8");
+	fs.writeFileSync(infoPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
 	return { id: dir.id };
 }
 

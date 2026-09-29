@@ -63,6 +63,7 @@ const ICON_PATH = {
 	theme: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>',
 	menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 	logout: '<path d="M10 7V5h9v14h-9v-2"/><path d="M13 12H4M7 9l-3 3 3 3"/>',
+	back: '<path d="M14 6l-6 6 6 6"/>',
 };
 
 function icon(name) {
@@ -288,6 +289,7 @@ function shell() {
 			<div class="main-col">
 				<header class="topbar">
 					<button class="btn ghost icon-btn menu-btn" id="menu" type="button" title="菜单">${icon("menu")}</button>
+					<button class="btn ghost icon-btn" id="goback" type="button" title="返回上一页" hidden>${icon("back")}</button>
 					<h1 id="crumb">${esc(state.title)}</h1>
 					<div class="top-actions">
 						<span class="user">${esc(state.user)}</span>
@@ -311,6 +313,14 @@ function shell() {
 	app.querySelector("#menu").onclick = () => shellNode.classList.toggle("nav-open");
 	app.querySelector("#backdrop").onclick = () => shellNode.classList.remove("nav-open");
 	return app.querySelector("#panel");
+}
+
+// 返回上一页：顶栏左侧按钮。shell() 每次重建后默认隐藏，由编辑类页面调用 setBack(处理器) 点亮。
+function setBack(handler) {
+	const button = app.querySelector("#goback");
+	if (!button) return;
+	button.hidden = !handler;
+	button.onclick = handler || null;
 }
 
 function renderLogin(message = "") {
@@ -446,11 +456,17 @@ async function renderPosts(panel) {
 	draw();
 }
 
-function publishedValue(date, time) {
-	if (!date) return "";
-	if (!time) return date;
+function dtValue(value) {
+	if (!value) return "";
+	const [date, time = "00:00"] = String(value).split("T");
+	if (time === "00:00" || time === "00:00:00") return date;
 	const clock = time.length === 5 ? time + ":00" : time;
 	return `${date}T${clock}+08:00`;
+}
+
+function dtLocal(value) {
+	const { date, time } = splitPublished(value);
+	return date ? `${date}T${time || "00:00"}` : "";
 }
 
 function splitPublished(value) {
@@ -480,7 +496,7 @@ function mdPreview(source) {
 				.replace(/^## (.*)$/gm, "<h2>$1</h2>")
 				.replace(/^# (.*)$/gm, "<h1>$1</h1>");
 			line = line.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>");
-			line = line.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2" referrerpolicy="no-referrer">');
+			line = line.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => `<img alt="${alt}" src="${img(src)}" referrerpolicy="no-referrer">`);
 			line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 			line = line.replace(/`([^`]+)`/g, "<code>$1</code>");
 			line = line.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
@@ -513,41 +529,39 @@ async function renderPostEditor(slug) {
 	state.view = "posts";
 	state.title = slug ? "编辑文章" : "新建文章";
 	const panel = shell();
+	setBack(() => open("posts"));
 	let file = { data: {}, body: "" };
 	if (slug) file = await api("/api/admin/content/posts/file?slug=" + encodeURIComponent(slug));
 	const listed = await api("/api/admin/content/posts");
 	const categories = [...new Set((listed.posts || []).map((post) => post.category).filter(Boolean))];
 	const fm = file.data || {};
-	const when = splitPublished(fm.published);
-	const updated = splitPublished(fm.updated);
 	const tags = Array.isArray(fm.tags) ? [...fm.tags] : [];
 	panel.innerHTML = `
 		<form id="post">
 			<div class="card">
+				<h3 class="sec-title">基本信息</h3>
 				<div class="row">
-					<div class="field"><label>标题</label><input name="title" value="${esc(fm.title || "")}"></div>
+					<div class="field" style="flex:2"><label>标题</label><input name="title" value="${esc(fm.title || "")}"></div>
 					<div class="field"><label>slug（文件名）</label><input name="slug" value="${esc(file.slug || "")}"></div>
 				</div>
 				<div class="row">
-					<div class="field"><label>发布日期</label><input name="pdate" type="date" value="${esc(when.date)}"></div>
-					<div class="field"><label>发布时间（空则只写日期）</label><input name="ptime" type="time" value="${esc(when.time)}"></div>
-					<div class="field"><label>更新日期</label><input name="udate" type="date" value="${esc(updated.date)}"></div>
-					<div class="field"><label>更新时间</label><input name="utime" type="time" value="${esc(updated.time)}"></div>
-				</div>
-				<div class="row">
-					<div class="field"><label>分类</label><select name="category"><option value="">未分类</option>${categories.map((item) => `<option ${item === fm.category ? "selected" : ""}>${esc(item)}</option>`).join("")}<option value="__new">新建分类</option></select><input name="categoryNew" placeholder="新分类" style="margin-top:8px;display:none"></div>
-					<div class="field"><label>标签（回车或逗号确认，中文逗号会拆开）</label><div class="chips" id="chips"></div><input id="tag-input" placeholder="算法，周赛"></div>
-					<div class="field"><label>排序 priority</label><input name="priority" type="number" value="${fm.priority ?? ""}"></div>
-				</div>
-				<div class="field"><label>摘要</label><textarea name="description">${esc(fm.description || "")}</textarea></div>
-				<div class="field"><label>封面</label><div class="shot-row"><div class="shot" data-shot="image"></div><div class="shot-fields"><input name="image" data-key="image" value="${esc(fm.image || "")}"><div class="drop" id="cover-drop">拖拽图片到这里，或点击选择<input type="file" accept="image/*" id="cover-file" hidden></div></div></div></div>
-				<div class="row">
-					<label class="switch"><input name="draft" type="checkbox" ${fm.draft ? "checked" : ""}> 草稿</label>
-					<label class="switch"><input name="pinned" type="checkbox" ${fm.pinned ? "checked" : ""}> 置顶</label>
-					<label class="switch"><input name="comment" type="checkbox" ${fm.comment === false ? "" : "checked"}> 允许评论</label>
+					<div class="field"><label>发布时间（00:00 按仅日期保存）</label><input name="pwhen" type="datetime-local" value="${esc(dtLocal(fm.published))}"></div>
+					<div class="field"><label>更新时间（可空，00:00 按仅日期保存）</label><input name="uwhen" type="datetime-local" value="${esc(dtLocal(fm.updated))}"></div>
 				</div>
 			</div>
 			<div class="card">
+				<h3 class="sec-title">分类与标签</h3>
+				<div class="row">
+					<div class="field" style="flex:2"><label>分类</label><select name="category"><option value="">未分类</option>${categories.map((item) => `<option ${item === fm.category ? "selected" : ""}>${esc(item)}</option>`).join("")}<option value="__new">新建分类</option></select><input name="categoryNew" placeholder="新分类" style="margin-top:8px;display:none"></div>
+					<div class="field"><label>排序 priority</label><input name="priority" type="number" value="${fm.priority ?? ""}"></div>
+				</div>
+				<div class="field"><label>标签（回车或逗号确认，中文逗号会拆开）</label><div class="chips" id="chips"></div><input id="tag-input" placeholder="算法，周赛"></div>
+			</div>
+			<div class="card">
+				<h3 class="sec-title">内容</h3>
+				<div class="field"><label>摘要</label><textarea name="description">${esc(fm.description || "")}</textarea></div>
+				<div class="field"><label>封面</label><div class="shot-row"><div class="shot big" data-shot="image"></div><div class="shot-fields"><input name="image" data-key="image" value="${esc(fm.image || "")}"><div class="drop" id="cover-drop">拖拽图片到这里，或点击选择<input type="file" accept="image/*" id="cover-file" hidden></div></div></div></div>
+				<h3 class="sec-title sub">正文</h3>
 				<div class="toolbar">
 					<button class="btn" type="button" data-wrap="**">加粗</button>
 					<button class="btn" type="button" data-wrap="*">斜体</button>
@@ -561,9 +575,21 @@ async function renderPostEditor(slug) {
 					<textarea name="body">${esc(file.body || "")}</textarea>
 					<div class="preview" id="preview"></div>
 				</div>
-				<p class="muted">阅读量 ${file.views ?? 0} 保存在数据库。表单没展示的 frontmatter 会保留。</p>
+				<p class="muted">表单没展示的 frontmatter 会保留。</p>
+			</div>
+			<div class="card">
+				<h3 class="sec-title">设置</h3>
+				<div class="row">
+					<label class="switch"><input name="draft" type="checkbox" ${fm.draft ? "checked" : ""}> 草稿</label>
+					<label class="switch"><input name="pinned" type="checkbox" ${fm.pinned ? "checked" : ""}> 置顶</label>
+					<label class="switch"><input name="comment" type="checkbox" ${fm.comment === false ? "" : "checked"}> 允许评论</label>
+				</div>
+			</div>
+			<div class="savebar">
 				<button class="btn primary" type="submit">保存</button>
-				<button class="btn" type="button" id="back">返回</button>
+				<button class="btn" type="button" id="back">取消</button>
+				<span class="spacer"></span>
+				<span class="muted">阅读量 ${file.views ?? 0} 保存在数据库</span>
 			</div>
 		</form>`;
 	const form = panel.querySelector("#post");
@@ -654,8 +680,8 @@ async function renderPostEditor(slug) {
 	form.onsubmit = async (event) => {
 		event.preventDefault();
 		commitTagInput();
-		if (!requireFields(form, ["title", "slug", "pdate"])) {
-			toast("请填写标题、slug 和发布日期", "err");
+		if (!requireFields(form, ["title", "slug", "pwhen"])) {
+			toast("请填写标题、slug 和发布时间", "err");
 			return;
 		}
 		const button = form.querySelector("[type=submit]");
@@ -668,8 +694,8 @@ async function renderPostEditor(slug) {
 						previousSlug: slug || "",
 						slug: data.get("slug"),
 						title: data.get("title"),
-						published: publishedValue(data.get("pdate"), data.get("ptime")),
-						updated: data.get("udate") ? publishedValue(data.get("udate"), data.get("utime")) : "",
+						published: dtValue(data.get("pwhen")),
+						updated: data.get("uwhen") ? dtValue(data.get("uwhen")) : "",
 						category: data.get("category") === "__new" ? data.get("categoryNew") : data.get("category"),
 						tags,
 						priority: data.get("priority"),
@@ -1539,92 +1565,201 @@ async function renderDevices(panel) {
 }
 
 async function renderAlbums(panel) {
-	const data = await api("/api/admin/albums");
-	const body = pageHead(panel, "相册", "每个相册是 public/images/albums 里的一个文件夹。");
-	body.innerHTML = `<form class="card" id="create"><div class="row"><div class="field"><label>文件夹名</label><input name="id" required></div><div class="field"><label>标题</label><input name="title"></div></div><button class="btn primary" type="submit">创建</button></form><div id="list"></div>`;
-	(data.albums || []).forEach((album) => {
+	let data = await api("/api/admin/albums");
+	let creating = false;
+	let editing = null;
+	const button = Object.assign(document.createElement("button"), {
+		className: "btn primary",
+		textContent: "新建相册",
+		type: "button",
+	});
+	const body = pageHead(panel, "相册", "每个相册是 public/images/albums 里的一个文件夹。", button);
+	const reload = async () => {
+		data = await api("/api/admin/albums");
+	};
+	const mini = (album) => {
 		const info = album.info || {};
-		const card = document.createElement("form");
-		card.className = "card";
-		card.innerHTML = `<h3>${esc(info.title || album.id)}</h3><p class="muted">${esc(album.id)}</p>
-			<div class="row"><div class="field"><label>标题</label><input name="title" value="${esc(info.title || "")}"></div><div class="field"><label>日期</label><input name="date" type="date" value="${esc(String(info.date || "").slice(0, 10))}"></div><div class="field"><label>地点</label><input name="location" value="${esc(info.location || "")}"></div></div>
-			<div class="field"><label>排版</label><select name="layout">${selectOptions([["grid", "网格"]], info.layout || "grid")}</select></div>
-			<div class="field"><label>简介</label><textarea name="description">${esc(info.description || "")}</textarea></div>
-			<div class="field"><label>标签</label><input name="tags" value="${esc((info.tags || []).join(", "))}"></div>
-			<div class="thumbs">${(album.photos || []).map((photo) => `<figure><img src="${esc(img(photo.url))}" alt="" referrerpolicy="no-referrer"><button class="btn danger" type="button" data-photo="${esc(photo.name)}">删除</button></figure>`).join("")}</div>
-			<div class="drop">拖拽或点击添加照片<input type="file" accept="image/*" multiple hidden data-file></div>
-			<div class="toolbar"><button class="btn primary" type="submit">保存信息</button><button class="btn danger" type="button" data-drop>删除相册</button></div>`;
-		const drop = card.querySelector(".drop");
-		drop.onclick = () => card.querySelector("[data-file]").click();
-		const send = async (list) => {
-			try {
-				for (const picked of list) {
-					const payload = new FormData();
-					payload.append("file", picked);
-					await api("/api/admin/albums/" + encodeURIComponent(album.id) + "/photos", { method: "POST", body: payload });
+		const photos = album.photos || [];
+		const date = String(info.date || "").slice(0, 10);
+		return `<div class="mini">${pic(album.cover)}<div class="body">
+			<h3>${esc(info.title || album.id)}</h3>
+			<div class="meta">${esc(date || "未设日期")} · ${photos.length} 张照片</div>
+			${info.hidden ? '<div class="meta"><span class="badge warn">已隐藏</span></div>' : ""}
+			<div class="ops">
+				<button class="btn" type="button" data-edit="${esc(album.id)}">编辑</button>
+				<button class="btn" type="button" data-hide="${esc(album.id)}">${info.hidden ? "取消隐藏" : "隐藏"}</button>
+				<button class="btn danger" type="button" data-del="${esc(album.id)}">删除</button>
+			</div>
+		</div></div>`;
+	};
+	const draw = () => {
+		const albums = data.albums || [];
+		let html = "";
+		if (creating) {
+			html += `<form class="card" id="create"><h3 class="sec-title">新建相册</h3>
+				<div class="row"><div class="field"><label>文件夹名</label><input name="id" required></div><div class="field"><label>标题</label><input name="title"></div></div>
+				<div class="toolbar"><button class="btn primary" type="submit">创建</button><button class="btn" type="button" id="cancel-create">收起</button></div></form>`;
+		}
+		const album = albums.find((item) => item.id === editing);
+		if (editing && album) {
+			const info = album.info || {};
+			html += `<form class="card" id="edit">
+				<h3 class="sec-title">相册信息 · ${esc(album.id)}</h3>
+				<div class="row">
+					<div class="field" style="flex:2"><label>标题</label><input name="title" value="${esc(info.title || "")}"></div>
+					<div class="field"><label>日期</label><input name="date" type="date" value="${esc(String(info.date || "").slice(0, 10))}"></div>
+					<div class="field"><label>地点</label><input name="location" value="${esc(info.location || "")}"></div>
+				</div>
+				<div class="row">
+					<div class="field"><label>排版</label><select name="layout">${selectOptions([["grid", "网格"]], info.layout || "grid")}</select></div>
+					<div class="field"><label>标签</label><input name="tags" value="${esc((info.tags || []).join(", "))}"></div>
+				</div>
+				<div class="field"><label>简介</label><textarea name="description">${esc(info.description || "")}</textarea></div>
+				<label class="switch"><input type="checkbox" name="hidden" ${info.hidden ? "checked" : ""}> 隐藏（前台不显示这个相册）</label>
+				<h3 class="sec-title sub">照片（${(album.photos || []).length}）</h3>
+				<div class="thumbs">${(album.photos || []).map((photo) => `<figure><img src="${esc(img(photo.url))}" alt="" referrerpolicy="no-referrer"><button class="btn danger" type="button" data-photo="${esc(photo.name)}">删除</button></figure>`).join("")}</div>
+				<div class="drop">拖拽或点击添加照片<input type="file" accept="image/*" multiple hidden data-file></div>
+				<div class="savebar">
+					<button class="btn primary" type="submit">保存</button>
+					<button class="btn" type="button" id="back">取消</button>
+					<span class="spacer"></span>
+					<button class="btn danger" type="button" data-del="${esc(album.id)}">删除相册</button>
+				</div>
+			</form>`;
+		} else {
+			html += `<div class="mini-grid">${albums.map(mini).join("")}</div>${albums.length ? "" : `<p class="muted">还没有相册</p>`}`;
+		}
+		body.innerHTML = html;
+		if (editing && album) setBack(() => { editing = null; draw(); });
+		else if (creating) setBack(() => { creating = false; draw(); });
+		else setBack(null);
+		if (creating) {
+			body.querySelector("#cancel-create").onclick = () => {
+				creating = false;
+				draw();
+			};
+			body.querySelector("#create").onsubmit = async (event) => {
+				event.preventDefault();
+				const input = new FormData(event.target);
+				try {
+					const created = await withButton(event.target.querySelector("[type=submit]"), () =>
+						api("/api/admin/albums", { method: "POST", body: { id: input.get("id"), info: { title: input.get("title") } } }),
+					);
+					creating = false;
+					editing = created.id || input.get("id");
+					await reload();
+					draw();
+					toast("已创建，可以上传照片了");
+				} catch (error) {
+					toast(error.message, "err");
 				}
-				toast("照片已上传");
-				open("albums");
-			} catch (error) {
-				toast(error.message, "err");
-			}
-		};
-		card.querySelector("[data-file]").onchange = (event) => send([...event.target.files]);
-		bindDrop(drop, (picked) => send([picked]));
-		card.onsubmit = async (event) => {
-			event.preventDefault();
-			const input = new FormData(card);
-			try {
-				await withButton(card.querySelector("[type=submit]"), () =>
-					api("/api/admin/albums/" + encodeURIComponent(album.id), {
-						method: "PUT",
-						body: {
-							info: {
-								title: input.get("title"),
-								description: input.get("description"),
-								date: input.get("date"),
-								location: input.get("location"),
-								tags: splitList(input.get("tags")),
-								layout: input.get("layout") || info.layout || "grid",
-								columns: Number(info.columns || 3),
-								hidden: Boolean(info.hidden),
+			};
+		}
+		if (editing && album) {
+			const card = body.querySelector("#edit");
+			const drop = card.querySelector(".drop");
+			drop.onclick = () => card.querySelector("[data-file]").click();
+			const send = async (list) => {
+				try {
+					for (const picked of list) {
+						const payload = new FormData();
+						payload.append("file", picked);
+						await api("/api/admin/albums/" + encodeURIComponent(editing) + "/photos", { method: "POST", body: payload });
+					}
+					toast("照片已上传");
+					await reload();
+					draw();
+				} catch (error) {
+					toast(error.message, "err");
+				}
+			};
+			card.querySelector("[data-file]").onchange = (event) => send([...event.target.files]);
+			bindDrop(drop, (picked) => send([picked]));
+			card.onsubmit = async (event) => {
+				event.preventDefault();
+				const input = new FormData(card);
+				try {
+					await withButton(card.querySelector("[type=submit]"), () =>
+						api("/api/admin/albums/" + encodeURIComponent(editing), {
+							method: "PUT",
+							body: {
+								info: {
+									title: input.get("title"),
+									description: input.get("description"),
+									date: input.get("date"),
+									location: input.get("location"),
+									tags: splitList(input.get("tags")),
+									layout: input.get("layout") || album.info?.layout || "grid",
+									columns: Number(album.info?.columns || 3),
+									hidden: input.get("hidden") === "on",
+								},
 							},
-						},
-					}),
-				);
-				toast("已保存");
-			} catch (error) {
-				toast(error.message, "err");
-			}
-		};
-		card.querySelectorAll("[data-photo]").forEach((node) => {
+						}),
+					);
+					toast("已保存");
+					editing = null;
+					await reload();
+					draw();
+				} catch (error) {
+					toast(error.message, "err");
+				}
+			};
+			card.querySelectorAll("[data-photo]").forEach((node) => {
+				node.onclick = async () => {
+					if (!(await confirmBox("删除照片", node.dataset.photo))) return;
+					await api(`/api/admin/albums/${encodeURIComponent(editing)}/photos?name=${encodeURIComponent(node.dataset.photo)}`, {
+						method: "DELETE",
+					});
+					await reload();
+					draw();
+				};
+			});
+			card.querySelector("#back").onclick = () => {
+				editing = null;
+				draw();
+			};
+		}
+		body.querySelectorAll("[data-del]").forEach((node) => {
 			node.onclick = async () => {
-				if (!(await confirmBox("删除照片", node.dataset.photo))) return;
-				await api(`/api/admin/albums/${encodeURIComponent(album.id)}/photos?name=${encodeURIComponent(node.dataset.photo)}`, {
-					method: "DELETE",
-				});
-				open("albums");
+				if (!(await confirmBox("删除相册", `删除「${node.dataset.del}」？整个文件夹和照片都会删掉。`))) return;
+				await api("/api/admin/albums/" + encodeURIComponent(node.dataset.del), { method: "DELETE" });
+				if (editing === node.dataset.del) editing = null;
+				await reload();
+				draw();
 			};
 		});
-		card.querySelector("[data-drop]").onclick = async () => {
-			if (!(await confirmBox("删除相册", album.id))) return;
-			await api("/api/admin/albums/" + encodeURIComponent(album.id), { method: "DELETE" });
-			open("albums");
-		};
-		body.querySelector("#list").append(card);
-	});
-	body.querySelector("#create").onsubmit = async (event) => {
-		event.preventDefault();
-		const input = new FormData(event.target);
-		try {
-			await withButton(event.target.querySelector("[type=submit]"), () =>
-				api("/api/admin/albums", { method: "POST", body: { id: input.get("id"), info: { title: input.get("title") } } }),
-			);
-			open("albums");
-		} catch (error) {
-			toast(error.message, "err");
-		}
+		body.querySelectorAll("[data-edit]").forEach((node) => {
+			node.onclick = () => {
+				creating = false;
+				editing = node.dataset.edit;
+				draw();
+			};
+		});
+		body.querySelectorAll("[data-hide]").forEach((node) => {
+			node.onclick = async () => {
+				const album = (data.albums || []).find((item) => item.id === node.dataset.hide);
+				if (!album) return;
+				const info = album.info || {};
+				try {
+					await api("/api/admin/albums/" + encodeURIComponent(album.id), {
+						method: "PUT",
+						body: { info: { ...info, hidden: !info.hidden } },
+					});
+					await reload();
+					draw();
+					toast(info.hidden ? "已取消隐藏" : "已隐藏，前台不再显示");
+				} catch (error) {
+					toast(error.message, "err");
+				}
+			};
+		});
 	};
+	button.onclick = () => {
+		creating = true;
+		editing = null;
+		draw();
+	};
+	draw();
 }
 
 if (token()) {
