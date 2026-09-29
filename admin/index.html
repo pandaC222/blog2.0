@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>blog2 后台</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+  <script>
+    /* 先于绘制设置色相和深色，避免闪一下亮色 */
+    (function () {
+      var saved = localStorage.getItem("blog2-admin-theme");
+      var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.classList.toggle("dark", dark);
+      document.documentElement.style.setProperty("--hue", "240");
+    })();
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

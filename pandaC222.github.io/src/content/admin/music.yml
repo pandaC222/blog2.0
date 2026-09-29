@@ -1,0 +1,9 @@
+# 音乐播放器 — /admin 可编辑
+enable: false
+showFloatingPlayer: false
+floatingEntryMode: fab   # default | fab
+mode: local              # local | meting
+meting_api: "https://meting.mysqil.com/api?server=:server&type=:type&id=:id&auth=:auth&r=:r"
+id: "14164869977"
+server: netease          # netease | tencent | kugou ...
+type: playlist

@@ -1,0 +1,22 @@
+desktop:
+  - /assets/desktop-banner/6.webp
+  - /assets/desktop-banner/7.webp
+  - /assets/desktop-banner/8.webp
+  - /assets/desktop-banner/9.webp
+  - /assets/desktop-banner/11.webp
+  - /assets/desktop-banner/12.webp
+  - /uploads/banners/1784289593444-1784289493449.png
+mobile: []
+carousel:
+  enable: true
+  interval: 3
+homeText:
+  enable: true
+  title: pandac的blog
+  subtitle:
+    - 希望有朝一日成为算法大蛇
+  typewriter:
+    enable: true
+    speed: 100
+    deleteSpeed: 50
+    pauseTime: 2000

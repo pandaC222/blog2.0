@@ -1,0 +1,9 @@
+enable: false
+title: 公告1
+content: 随缘更新
+closable: false
+link:
+  enable: false
+  text: Learn More
+  url: /about/
+  external: false

@@ -1,0 +1,10 @@
+{
+  "title": "日常",
+  "description": "分享一下日常",
+  "hidden": false,
+  "date": "2026-04-05",
+  "location": "无锡",
+  "tags": ["学校"],
+  "layout": "masonry",
+  "columns": 3
+}

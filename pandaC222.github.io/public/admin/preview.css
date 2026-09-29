@@ -1,0 +1,154 @@
+/* Markdown / entry preview — 让正文预览真正像文章，而不是一坨纯文本 */
+.frame-content,
+.pane,
+[class*="preview"] {
+	font-family:
+		"PingFang SC",
+		"Microsoft YaHei",
+		"Noto Sans SC",
+		system-ui,
+		sans-serif;
+	line-height: 1.75;
+	color: #1f2937;
+}
+
+.frame-content h1,
+.frame-content h2,
+.frame-content h3,
+[class*="preview"] h1,
+[class*="preview"] h2,
+[class*="preview"] h3 {
+	font-weight: 700;
+	line-height: 1.3;
+	margin: 1.2em 0 0.5em;
+	color: #111827;
+}
+
+.frame-content h1,
+[class*="preview"] h1 {
+	font-size: 1.75rem;
+	border-bottom: 1px solid #e5e7eb;
+	padding-bottom: 0.3em;
+}
+
+.frame-content h2,
+[class*="preview"] h2 {
+	font-size: 1.4rem;
+}
+
+.frame-content h3,
+[class*="preview"] h3 {
+	font-size: 1.15rem;
+}
+
+.frame-content p,
+[class*="preview"] p {
+	margin: 0.75em 0;
+}
+
+.frame-content a,
+[class*="preview"] a {
+	color: #4f6ef7;
+	text-decoration: underline;
+}
+
+.frame-content ul,
+.frame-content ol,
+[class*="preview"] ul,
+[class*="preview"] ol {
+	padding-left: 1.4em;
+	margin: 0.75em 0;
+}
+
+.frame-content code,
+[class*="preview"] code {
+	font-family:
+		"JetBrains Mono",
+		ui-monospace,
+		SFMono-Regular,
+		Menlo,
+		Consolas,
+		monospace;
+	background: #f3f4f6;
+	padding: 0.12em 0.35em;
+	border-radius: 4px;
+	font-size: 0.92em;
+}
+
+.frame-content pre,
+[class*="preview"] pre {
+	background: #0f172a;
+	color: #e5e7eb;
+	padding: 1rem 1.1rem;
+	border-radius: 10px;
+	overflow-x: auto;
+	margin: 1em 0;
+}
+
+.frame-content pre code,
+[class*="preview"] pre code {
+	background: transparent;
+	padding: 0;
+	color: inherit;
+}
+
+.frame-content blockquote,
+[class*="preview"] blockquote {
+	border-left: 4px solid #4f6ef7;
+	margin: 1em 0;
+	padding: 0.25em 0 0.25em 1em;
+	color: #4b5563;
+	background: #f8fafc;
+}
+
+.frame-content img,
+[class*="preview"] img {
+	max-width: 100%;
+	border-radius: 8px;
+}
+
+.frame-content table,
+[class*="preview"] table {
+	border-collapse: collapse;
+	width: 100%;
+	margin: 1em 0;
+}
+
+.frame-content th,
+.frame-content td,
+[class*="preview"] th,
+[class*="preview"] td {
+	border: 1px solid #e5e7eb;
+	padding: 0.45em 0.7em;
+}
+
+/* 暗色预览 */
+@media (prefers-color-scheme: dark) {
+	.frame-content,
+	[class*="preview"] {
+		color: #e5e7eb;
+	}
+	.frame-content h1,
+	.frame-content h2,
+	.frame-content h3,
+	[class*="preview"] h1,
+	[class*="preview"] h2,
+	[class*="preview"] h3 {
+		color: #f9fafb;
+	}
+	.frame-content code,
+	[class*="preview"] code {
+		background: #1f2937;
+	}
+	.frame-content blockquote,
+	[class*="preview"] blockquote {
+		background: #111827;
+		color: #d1d5db;
+	}
+	.frame-content th,
+	.frame-content td,
+	[class*="preview"] th,
+	[class*="preview"] td {
+		border-color: #374151;
+	}
+}

@@ -1,0 +1,41 @@
+items:
+  - id: python
+    name: Python
+    description: A general-purpose programming language suitable for web
+      development, data analysis, machine learning, and more.
+    icon: logos:python
+    category: backend
+    level: intermediate
+    experience:
+      years: 0
+      months: 9
+    color: "#3776AB"
+    projects: []
+  - id: cpp
+    name: C++
+    description: A high-performance systems programming language widely used in game
+      development, system software, and embedded development.
+    icon: logos:c-plusplus
+    category: backend
+    level: intermediate
+    experience:
+      years: 0
+      months: 8
+    projects:
+      - game-engine
+      - system-optimization
+    color: "#00599C"
+  - id: c
+    name: C
+    description: A low-level systems programming language, the foundation for
+      operating systems and embedded systems development.
+    icon: logos:c
+    category: backend
+    level: intermediate
+    experience:
+      years: 0
+      months: 8
+    projects:
+      - embedded-system
+      - kernel-module
+    color: "#A8B9CC"

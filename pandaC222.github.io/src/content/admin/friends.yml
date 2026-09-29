@@ -1,0 +1,21 @@
+items:
+  - id: 3
+    title: Vercel
+    imgurl: /uploads/friends/1784235694731-favicon.ico
+    desc: Develop. Preview. Ship.
+    siteurl: https://vercel.com/
+    tags:
+      - Hosting
+  - id: 7
+    title: GitHub
+    imgurl: https://avatars.githubusercontent.com/u/9919?v=4&s=640
+    desc: Where the world builds software
+    siteurl: https://github.com
+    tags:
+      - Platform
+  - id: 8
+    title: GoAlgo
+    imgurl: /uploads/friends/1784235731282-favicon.svg
+    desc: ""
+    siteurl: https://algo.zhiyuansofts.cn/
+    tags: []

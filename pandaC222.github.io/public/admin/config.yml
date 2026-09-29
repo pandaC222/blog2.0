@@ -1,0 +1,644 @@
+# yaml-language-server: $schema=https://unpkg.com/@sveltia/cms/schema/sveltia-cms.json
+# pandac 博客管理后台配置（Sveltia CMS）
+# 界面标签全部中文；模块按「内容 / 站点 / 功能页」组织
+
+backend:
+  name: github
+  repo: pandaC222/aicoding
+  branch: main
+  # 线上 OAuth 代理地址（部署 sveltia-cms-auth 后取消注释）：
+  # base_url: https://your-sveltia-auth.workers.dev
+
+# 上传图片统一进 public/uploads，前台路径 /uploads/...
+media_folder: public/uploads
+public_folder: /uploads
+
+# 站点信息（后台顶栏展示）
+site_url: https://pandac222.github.io
+display_url: https://pandac222.github.io
+logo_url: /uploads/avatar.webp
+app_title: pandac 博客管理后台
+logo:
+  src: /uploads/avatar.webp
+  show_in_header: true
+
+# 应用名（登录页 / 浏览器标题）
+# Sveltia 文档：app_title
+# https://sveltiacms.app/en/docs/customization
+# 部分版本用 logo + app_title
+# 兼容字段一并写上
+slug:
+  encoding: unicode
+  clean_accents: false
+  sanitize_replacement: "-"
+
+collections:
+  # ========== 内容 ==========
+  - name: posts
+    label: 写文章
+    label_singular: 文章
+    description: 发布比赛复盘、每日一题、板子笔记。只需填标题和正文即可发布。
+    icon: edit_note
+    folder: src/content/posts
+    create: true
+    delete: true
+    extension: md
+    format: yaml-frontmatter
+    slug: "{{slug}}"
+    summary: "{{title}} · {{category}}"
+    sortable_fields:
+      fields: [title, published, category, draft]
+      default:
+        field: published
+        direction: descending
+    view_filters:
+      - label: 仅草稿
+        field: draft
+        pattern: true
+      - label: 已置顶
+        field: pinned
+        pattern: true
+    fields:
+      - label: 标题
+        name: title
+        widget: string
+        hint: 必填。例如：Codeforces Round 1090 复盘
+      - label: 发布日期
+        name: published
+        widget: datetime
+        date_format: YYYY-MM-DD
+        time_format: false
+        default: "{{now}}"
+      - label: 正文
+        name: body
+        widget: markdown
+        hint: 支持 Markdown 与代码块
+      - label: 摘要
+        name: description
+        widget: string
+        required: false
+        hint: 可选。列表页预览用，不填也可以
+      - label: 封面图
+        name: image
+        widget: image
+        required: false
+        choose_url: true
+        media_folder: /public/uploads
+        public_folder: /uploads
+      - label: 分类
+        name: category
+        widget: string
+        required: false
+        hint: 例如：算法 / Codeforces / 牛客 / AtCoder / 模板
+      - label: 标签
+        name: tags
+        widget: list
+        required: false
+        hint: 回车添加多个标签，如 算法、每日一题
+      - label: 置顶
+        name: pinned
+        widget: boolean
+        default: false
+      - label: 草稿（不显示在前台）
+        name: draft
+        widget: boolean
+        default: false
+      - label: 优先级（数字越大越靠前，可选）
+        name: priority
+        widget: number
+        required: false
+        value_type: int
+        min: 0
+        max: 100
+
+  - name: about
+    label: 关于我
+    label_singular: 关于我
+    description: 编辑「关于」页面正文（Markdown）。
+    icon: person
+    files:
+      - name: about
+        label: 关于页内容
+        file: src/content/spec/about.md
+        fields:
+          - label: 正文
+            name: body
+            widget: markdown
+
+  # ========== 站点设置 ==========
+  - name: profile
+    label: 个人资料
+    label_singular: 个人资料
+    description: 侧栏头像、昵称、签名与社交链接。
+    icon: account_circle
+    files:
+      - name: profile
+        label: 头像 / 昵称 / 签名
+        file: src/content/admin/profile.yml
+        fields:
+          - { label: 昵称, name: name, widget: string }
+          - { label: 签名 / Bio, name: bio, widget: text, hint: 显示在侧栏头像下方 }
+          - {
+              label: 头像,
+              name: avatar,
+              widget: image,
+              choose_url: true,
+              media_folder: /public/uploads,
+              public_folder: /uploads,
+              hint: 建议正方形图片，上传后自动保存到 /uploads,
+            }
+          - label: 签名打字机效果
+            name: typewriter
+            widget: object
+            collapsed: true
+            fields:
+              - { label: 启用打字机, name: enable, widget: boolean, default: true }
+              - {
+                  label: 打字速度（毫秒）,
+                  name: speed,
+                  widget: number,
+                  default: 80,
+                  value_type: int,
+                  min: 20,
+                  max: 500,
+                }
+          - label: 社交链接
+            name: links
+            widget: list
+            summary: "{{fields.name}}"
+            fields:
+              - { label: 名称, name: name, widget: string }
+              - {
+                  label: 图标（Iconify 名）,
+                  name: icon,
+                  widget: string,
+                  hint: 例如 fa7-brands:github 、 fa7-brands:bilibili,
+                  default: fa7-brands:github,
+                }
+              - { label: 链接, name: url, widget: string }
+
+  - name: announcement
+    label: 公告
+    label_singular: 公告
+    description: 侧栏公告卡片文案与按钮。
+    icon: campaign
+    files:
+      - name: announcement
+        label: 侧栏公告
+        file: src/content/admin/announcement.yml
+        fields:
+          - {
+              label: 显示公告,
+              name: enable,
+              widget: boolean,
+              default: true,
+              hint: 关闭后前台侧栏不再渲染公告卡片,
+            }
+          - { label: 标题, name: title, widget: string, default: 公告 }
+          - { label: 内容, name: content, widget: text }
+          - {
+              label: 允许访客关闭,
+              name: closable,
+              widget: boolean,
+              default: false,
+            }
+          - label: 底部按钮链接
+            name: link
+            widget: object
+            collapsed: true
+            fields:
+              - { label: 显示按钮, name: enable, widget: boolean, default: false }
+              - { label: 按钮文字, name: text, widget: string, required: false }
+              - { label: 跳转地址, name: url, widget: string, required: false }
+              - {
+                  label: 在新标签打开,
+                  name: external,
+                  widget: boolean,
+                  default: false,
+                }
+
+  - name: banner
+    label: 首页横幅
+    label_singular: 首页横幅
+    description: 上传/排序桌面与移动端横幅图，以及首页大标题文案。
+    icon: image
+    files:
+      - name: banner
+        label: 横幅图片与文案
+        file: src/content/admin/banner.yml
+        fields:
+          - label: 桌面端横幅图（可多张，按顺序轮播）
+            name: desktop
+            widget: list
+            field:
+              label: 图片
+              name: image
+              widget: image
+              choose_url: true
+              media_folder: /public/uploads/banners
+              public_folder: /uploads/banners
+          - label: 移动端横幅图（可留空，留空则用桌面图）
+            name: mobile
+            widget: list
+            required: false
+            field:
+              label: 图片
+              name: image
+              widget: image
+              choose_url: true
+              media_folder: /public/uploads/banners
+              public_folder: /uploads/banners
+          - label: 轮播设置
+            name: carousel
+            widget: object
+            fields:
+              - { label: 启用轮播, name: enable, widget: boolean, default: true }
+              - {
+                  label: 间隔秒数,
+                  name: interval,
+                  widget: number,
+                  default: 3,
+                  value_type: int,
+                  min: 1,
+                  max: 30,
+                }
+          - label: 首页大标题文案
+            name: homeText
+            widget: object
+            fields:
+              - { label: 显示文案, name: enable, widget: boolean, default: true }
+              - { label: 主标题, name: title, widget: string }
+              - label: 副标题（可多条轮换）
+                name: subtitle
+                widget: list
+                field: { label: 一句, name: line, widget: string }
+              - label: 副标题打字机
+                name: typewriter
+                widget: object
+                collapsed: true
+                fields:
+                  - { label: 启用, name: enable, widget: boolean, default: true }
+                  - {
+                      label: 打字速度 ms,
+                      name: speed,
+                      widget: number,
+                      default: 100,
+                      value_type: int,
+                    }
+                  - {
+                      label: 删除速度 ms,
+                      name: deleteSpeed,
+                      widget: number,
+                      default: 50,
+                      value_type: int,
+                    }
+                  - {
+                      label: 停顿 ms,
+                      name: pauseTime,
+                      widget: number,
+                      default: 2000,
+                      value_type: int,
+                    }
+
+  # ========== 功能模块 ==========
+  - name: features
+    label: 模块开关
+    label_singular: 模块开关
+    description: 一键开关前台功能页。关闭后访问对应 URL 会跳到 404。打开后请到下方「模块内容」里维护数据。
+    icon: toggle_on
+    files:
+      - name: features
+        label: 功能页开关
+        file: src/content/admin/features.yml
+        fields:
+          - label: 番剧页
+            name: anime
+            widget: boolean
+            default: false
+            hint: /anime/
+          - label: 日记页
+            name: diary
+            widget: boolean
+            default: false
+            hint: /diary/
+          - label: 友链页
+            name: friends
+            widget: boolean
+            default: false
+            hint: /friends/ · 内容在「友链管理」
+          - label: 项目页
+            name: projects
+            widget: boolean
+            default: true
+            hint: /projects/
+          - label: 技能页
+            name: skills
+            widget: boolean
+            default: true
+            hint: /skills/
+          - label: 时间线
+            name: timeline
+            widget: boolean
+            default: true
+            hint: /timeline/
+          - label: 相册
+            name: albums
+            widget: boolean
+            default: true
+            hint: /albums/
+          - label: 设备页
+            name: devices
+            widget: boolean
+            default: false
+            hint: /devices/
+
+  - name: friends
+    label: 友链管理
+    label_singular: 友链
+    description: 管理友链卡片。请先在「模块开关」中打开友链。
+    icon: link
+    files:
+      - name: friends
+        label: 友链列表
+        file: src/content/admin/friends.yml
+        fields:
+          - label: 友链
+            name: items
+            widget: list
+            summary: "{{fields.title}}"
+            fields:
+              - {
+                  label: 序号,
+                  name: id,
+                  widget: number,
+                  value_type: int,
+                  min: 1,
+                }
+              - { label: 站点名称, name: title, widget: string }
+              - {
+                  label: 头像 / 图标,
+                  name: imgurl,
+                  widget: image,
+                  choose_url: true,
+                  media_folder: /public/uploads/friends,
+                  public_folder: /uploads/friends,
+                }
+              - { label: 简介, name: desc, widget: string }
+              - { label: 网址, name: siteurl, widget: string }
+              - label: 标签
+                name: tags
+                widget: list
+                required: false
+                field: { label: 标签, name: tag, widget: string }
+  - name: projects
+    label: 项目管理
+    label_singular: 项目
+    description: 编辑项目卡片。请先在「模块开关」中打开项目页。
+    icon: work
+    files:
+      - name: projects
+        label: 项目列表
+        file: src/content/admin/projects.yml
+        fields:
+          - label: 项目
+            name: items
+            widget: list
+            summary: "{{fields.title}} · {{fields.status}}"
+            fields:
+              - { label: ID, name: id, widget: string }
+              - { label: 标题, name: title, widget: string }
+              - { label: 简介, name: description, widget: text }
+              - {
+                  label: 封面图,
+                  name: image,
+                  widget: image,
+                  required: false,
+                  choose_url: true,
+                  media_folder: /public/uploads/projects,
+                  public_folder: /uploads/projects,
+                }
+              - label: 分类
+                name: category
+                widget: select
+                options: [web, mobile, desktop, other]
+              - label: 技术栈
+                name: techStack
+                widget: list
+                field: { label: 技术, name: tech, widget: string }
+              - label: 状态
+                name: status
+                widget: select
+                options:
+                  - { label: 已完成, value: completed }
+                  - { label: 进行中, value: in-progress }
+                  - { label: 计划中, value: planned }
+              - { label: 源码链接, name: sourceCode, widget: string, required: false }
+              - { label: 演示链接, name: visitUrl, widget: string, required: false }
+              - { label: 在线 Demo, name: liveDemo, widget: string, required: false }
+              - { label: 开始日期, name: startDate, widget: string }
+              - { label: 结束日期, name: endDate, widget: string, required: false }
+              - { label: 精选, name: featured, widget: boolean, default: false }
+              - { label: 显示封面, name: showImage, widget: boolean, required: false }
+              - label: 标签
+                name: tags
+                widget: list
+                required: false
+                field: { label: 标签, name: tag, widget: string }
+
+  - name: skills
+    label: 技能管理
+    label_singular: 技能
+    description: 编辑技能卡片。请先打开「技能」开关。
+    icon: psychology
+    files:
+      - name: skills
+        label: 技能列表
+        file: src/content/admin/skills.yml
+        fields:
+          - label: 技能
+            name: items
+            widget: list
+            summary: "{{fields.name}} · {{fields.level}}"
+            fields:
+              - { label: ID, name: id, widget: string }
+              - { label: 名称, name: name, widget: string }
+              - { label: 简介, name: description, widget: text }
+              - { label: 图标 Iconify, name: icon, widget: string, default: mdi:code-tags }
+              - label: 分类
+                name: category
+                widget: select
+                options: [frontend, backend, database, tools, other]
+              - label: 水平
+                name: level
+                widget: select
+                options: [beginner, intermediate, advanced, expert]
+              - label: 经验
+                name: experience
+                widget: object
+                fields:
+                  - { label: 年, name: years, widget: number, value_type: int, min: 0 }
+                  - { label: 月, name: months, widget: number, value_type: int, min: 0, max: 11 }
+              - { label: 主题色, name: color, widget: string, required: false }
+              - label: 相关项目 ID
+                name: projects
+                widget: list
+                required: false
+                field: { label: 项目ID, name: project, widget: string }
+
+  - name: timeline
+    label: 时间线管理
+    label_singular: 时间线
+    description: 编辑经历时间线。请先打开「时间线」开关。
+    icon: timeline
+    files:
+      - name: timeline
+        label: 时间线条目
+        file: src/content/admin/timeline.yml
+        fields:
+          - label: 条目
+            name: items
+            widget: list
+            summary: "{{fields.title}}"
+            fields:
+              - { label: ID, name: id, widget: string }
+              - { label: 标题, name: title, widget: string }
+              - { label: 描述, name: description, widget: text }
+              - label: 类型
+                name: type
+                widget: select
+                options: [education, work, project, achievement]
+              - { label: 开始, name: startDate, widget: string }
+              - { label: 结束, name: endDate, widget: string, required: false }
+              - { label: 地点, name: location, widget: string, required: false }
+              - { label: 组织, name: organization, widget: string, required: false }
+              - { label: 职位, name: position, widget: string, required: false }
+              - { label: 图标, name: icon, widget: string, required: false }
+              - { label: 颜色, name: color, widget: string, required: false }
+              - { label: 精选, name: featured, widget: boolean, default: false }
+              - label: 技能
+                name: skills
+                widget: list
+                required: false
+                field: { label: 技能, name: skill, widget: string }
+              - label: 成就
+                name: achievements
+                widget: list
+                required: false
+                field: { label: 成就, name: text, widget: string }
+
+  - name: diary
+    label: 日记管理
+    label_singular: 日记
+    description: 编辑日记条目。请先打开「日记」开关。
+    icon: book
+    files:
+      - name: diary
+        label: 日记列表
+        file: src/content/admin/diary.yml
+        fields:
+          - label: 日记
+            name: items
+            widget: list
+            summary: "{{fields.date}}"
+            fields:
+              - { label: 序号, name: id, widget: number, value_type: int }
+              - { label: 内容, name: content, widget: text }
+              - { label: 日期, name: date, widget: datetime }
+              - label: 图片
+                name: images
+                widget: list
+                required: false
+                field:
+                  label: 图片
+                  name: image
+                  widget: image
+                  choose_url: true
+                  media_folder: /public/uploads/diary
+                  public_folder: /uploads/diary
+              - { label: 地点, name: location, widget: string, required: false }
+              - { label: 心情, name: mood, widget: string, required: false }
+              - label: 标签
+                name: tags
+                widget: list
+                required: false
+                field: { label: 标签, name: tag, widget: string }
+
+  - name: anime
+    label: 番剧管理
+    label_singular: 番剧
+    description: 本地番剧列表。请先打开「番剧」开关。
+    icon: movie
+    files:
+      - name: anime
+        label: 番剧列表
+        file: src/content/admin/anime.yml
+        fields:
+          - label: 番剧
+            name: items
+            widget: list
+            summary: "{{fields.title}} · {{fields.status}}"
+            fields:
+              - { label: 标题, name: title, widget: string }
+              - label: 状态
+                name: status
+                widget: select
+                options:
+                  - { label: 在看, value: watching }
+                  - { label: 已看完, value: completed }
+                  - { label: 想看, value: planned }
+              - { label: 评分, name: rating, widget: number, value_type: float, min: 0, max: 10 }
+              - {
+                  label: 封面,
+                  name: cover,
+                  widget: image,
+                  choose_url: true,
+                  media_folder: /public/uploads/anime,
+                  public_folder: /uploads/anime,
+                }
+              - { label: 简介, name: description, widget: text }
+              - { label: 集数描述, name: episodes, widget: string }
+              - { label: 年份, name: year, widget: string }
+              - label: 类型
+                name: genre
+                widget: list
+                field: { label: 类型, name: genre, widget: string }
+              - { label: 制作公司, name: studio, widget: string }
+              - { label: 链接, name: link, widget: string }
+              - { label: 进度, name: progress, widget: number, value_type: int }
+              - { label: 总集数, name: totalEpisodes, widget: number, value_type: int }
+              - { label: 开始, name: startDate, widget: string }
+              - { label: 结束, name: endDate, widget: string }
+
+  - name: devices
+    label: 设备管理
+    label_singular: 设备
+    description: 按分类管理设备。请先打开「设备」开关。
+    icon: devices
+    files:
+      - name: devices
+        label: 设备分类
+        file: src/content/admin/devices.yml
+        fields:
+          - label: 分类
+            name: categories
+            widget: list
+            summary: "{{fields.key}}"
+            fields:
+              - { label: 分类名, name: key, widget: string }
+              - label: 设备
+                name: devices
+                widget: list
+                summary: "{{fields.name}}"
+                fields:
+                  - { label: 名称, name: name, widget: string }
+                  - {
+                      label: 图片,
+                      name: image,
+                      widget: image,
+                      choose_url: true,
+                      media_folder: /public/uploads/devices,
+                      public_folder: /uploads/devices,
+                    }
+                  - { label: 规格, name: specs, widget: string }
+                  - { label: 描述, name: description, widget: text }
+                  - { label: 链接, name: link, widget: string }

@@ -1,0 +1,13 @@
+name: pandac
+bio: 希望有朝一日成为算法大蛇
+avatar: /uploads/avatar.webp
+typewriter:
+  enable: true
+  speed: 80
+links:
+  - name: Bilibili
+    icon: fa7-brands:bilibili
+    url: https://space.bilibili.com/3546699205184332
+  - name: GitHub
+    icon: fa7-brands:github
+    url: https://github.com/pandaC222

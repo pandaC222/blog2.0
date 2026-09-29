@@ -1,0 +1,20 @@
+# 看板娘 Pio — /admin 可编辑
+enable: false
+position: left           # left | right
+width: 280
+height: 250
+mode: draggable          # static | fixed | draggable
+hiddenOnMobile: true
+models:
+  - /pio/models/pio/model.json
+dialog:
+  welcome: Welcome to my blog!
+  home: 点击回到首页
+  close: 下次见~
+  link: https://github.com/pandaC222
+  touch:
+    - 你在干什么？
+    - 不要戳我啦
+  skin:
+    - 想看我的新衣服吗？
+    - 新衣服好看吗~

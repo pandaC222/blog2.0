@@ -1,0 +1,75 @@
+/* pandac 博客管理后台 — 贴近站点的视觉（Sveltia CSS 变量覆盖）
+ * 参考：https://sveltiacms.app/en/docs/customization
+ */
+
+:root {
+	/* 与站点 themeColor hue 240 接近的主色 */
+	--sui-primary: #4f6ef7;
+	--sui-primary-hover: #3b5bdb;
+	--sui-focus-ring: rgba(79, 110, 247, 0.35);
+	color-scheme: light dark;
+}
+
+html,
+body {
+	margin: 0;
+	min-height: 100%;
+	font-family:
+		"Zen Maru Gothic",
+		"萝莉体 第二版",
+		"PingFang SC",
+		"Microsoft YaHei",
+		system-ui,
+		sans-serif;
+	background: #0f1220;
+}
+
+/* 登录页欢迎条 */
+.cms-welcome {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 10px 18px;
+	background: linear-gradient(90deg, #1a1f3a 0%, #243b6b 50%, #1a1f3a 100%);
+	color: #e8ecff;
+	font-size: 13px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.cms-welcome strong {
+	color: #9db4ff;
+	font-weight: 600;
+}
+
+.cms-welcome a {
+	color: #c5d4ff;
+	text-decoration: none;
+	border: 1px solid rgba(197, 212, 255, 0.35);
+	padding: 4px 10px;
+	border-radius: 999px;
+	transition: 0.15s ease;
+}
+
+.cms-welcome a:hover {
+	background: rgba(255, 255, 255, 0.08);
+}
+
+.cms-welcome-hint {
+	opacity: 0.85;
+}
+
+/* 给 CMS 主界面顶部留出欢迎条高度（登录后可能仍显示，可点关闭） */
+body.cms-has-banner {
+	padding-top: 44px;
+}
+
+.cms-welcome[hidden] {
+	display: none !important;
+}

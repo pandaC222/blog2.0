@@ -1,0 +1,14 @@
+{
+  "title": "Some lovely pictures",
+  "description": "The world is vast, and you have to go explore it.",
+  "date": "2025-08-01T00:00:00",
+  "location": "Bilibili",
+  "tags": [
+    "Kawai",
+    "Cute",
+    "Moe"
+  ],
+  "layout": "masonry",
+  "columns": 3,
+  "hidden": true
+}

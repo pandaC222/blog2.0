@@ -1,0 +1,168 @@
+---
+import { Icon } from "astro-icon/components";
+
+import { announcementConfig } from "../../../config";
+import I18nKey from "../../../i18n/i18nKey";
+import { i18n } from "../../../i18n/translation";
+import WidgetLayout from "../common/WidgetLayout.astro";
+
+const config = announcementConfig;
+
+/** 内容指纹：公告文案变更后旧的「已关闭」状态自动失效 */
+function makeDismissToken(title: string, content: string): string {
+	const s = `${title}\n${content}`;
+	let h = 5381;
+	for (let i = 0; i < s.length; i++) {
+		h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
+	}
+	return h.toString(36);
+}
+
+interface Props {
+	class?: string;
+	style?: string;
+}
+const className = Astro.props.class;
+const style = Astro.props.style;
+
+// enable 缺省为 true；关闭后整块不渲染
+const enabled = config.enable !== false;
+const title = config.title || i18n(I18nKey.announcement);
+const content = config.content || "";
+const closable = !!config.closable;
+const dismissToken = makeDismissToken(title, content);
+---
+
+{
+	enabled && content && (
+		<WidgetLayout name={title} id="announcement" class={className} style={style}>
+			<div
+				data-announcement-root
+				data-closable={closable ? "1" : "0"}
+				data-dismiss-token={dismissToken}
+			>
+				{/* 公告栏内容 */}
+				<div class="text-neutral-600 dark:text-neutral-300 leading-relaxed mb-3 whitespace-pre-wrap">
+					{content}
+				</div>
+
+				{/* 可选链接和关闭按钮 */}
+				<div class="flex items-center justify-between gap-3">
+					<div>
+						{config.link && config.link.enable !== false && (
+							<a
+								href={config.link.url}
+								target={config.link.external ? "_blank" : "_self"}
+								rel={config.link.external ? "noopener noreferrer" : undefined}
+								class="btn-regular rounded-lg px-3 py-1.5 text-sm font-medium active:scale-95 transition-transform"
+							>
+								{config.link.text}
+							</a>
+						)}
+					</div>
+
+					{closable && (
+						<button
+							class="btn-regular rounded-lg h-8 w-8 text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+							type="button"
+							data-announcement-close
+							aria-label={i18n(I18nKey.announcementClose)}
+						>
+							<Icon name="fa7-solid:xmark" class="text-sm" />
+						</button>
+					)}
+				</div>
+			</div>
+		</WidgetLayout>
+	)
+}
+
+<script>
+	const STORAGE_KEY = "announcementClosed";
+
+	function hideAnnouncementWidgets() {
+		document
+			.querySelectorAll('widget-layout[data-id="announcement"]')
+			.forEach((widget) => {
+				(widget as HTMLElement).style.display = "none";
+			});
+	}
+
+	function applyAnnouncementDismissState() {
+		const root = document.querySelector(
+			"[data-announcement-root]",
+		) as HTMLElement | null;
+		if (!root) return;
+
+		// 不允许关闭时：始终显示，并清掉历史关闭标记
+		if (root.dataset.closable !== "1") {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				/* ignore */
+			}
+			return;
+		}
+
+		const token = root.dataset.dismissToken || "";
+		let stored = "";
+		try {
+			stored = localStorage.getItem(STORAGE_KEY) || "";
+		} catch {
+			stored = "";
+		}
+
+		// 兼容旧值 "true"：一律视为过期，内容变更或新逻辑下重新展示
+		if (stored && stored !== "true" && token && stored === token) {
+			hideAnnouncementWidgets();
+		} else if (stored === "true" || (stored && stored !== token)) {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				/* ignore */
+			}
+		}
+	}
+
+	function closeAnnouncement() {
+		const root = document.querySelector(
+			"[data-announcement-root]",
+		) as HTMLElement | null;
+		if (!root || root.dataset.closable !== "1") return;
+
+		const token = root.dataset.dismissToken || "";
+		try {
+			if (token) localStorage.setItem(STORAGE_KEY, token);
+		} catch {
+			/* ignore */
+		}
+		hideAnnouncementWidgets();
+	}
+
+	function bindCloseButtons() {
+		document
+			.querySelectorAll("[data-announcement-close]")
+			.forEach((btn) => {
+				if ((btn as HTMLElement).dataset.bound === "1") return;
+				(btn as HTMLElement).dataset.bound = "1";
+				btn.addEventListener("click", closeAnnouncement);
+			});
+	}
+
+	function initAnnouncement() {
+		applyAnnouncementDismissState();
+		bindCloseButtons();
+	}
+
+	if (document.readyState === "loading") {
+		document.addEventListener("DOMContentLoaded", initAnnouncement);
+	} else {
+		initAnnouncement();
+	}
+
+	// Swup 等客户端导航后重新绑定
+	document.addEventListener("swup:page:view", initAnnouncement);
+	document.addEventListener("astro:page-load", initAnnouncement);
+
+	window.closeAnnouncement = closeAnnouncement;
+</script>

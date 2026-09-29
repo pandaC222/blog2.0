@@ -1,0 +1,13 @@
+items:
+  - id: "1"
+    title: 大学经历
+    description: 目前就读于无锡学院，2025级学生
+    type: education
+    startDate: 2025-09-01
+    endDate: 2029-06-01
+    organization: Wuxi University
+    position: 学生
+    location: 无锡
+    skills: []
+    color: "#3B82F6"
+    featured: false

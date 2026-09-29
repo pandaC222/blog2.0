@@ -1,0 +1,42 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ] # 兼容 main 和 master 分支
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout your repository using git
+        uses: actions/checkout@v4
+
+      # 关闭内容分离：CI 无 .env 时 sync-content 默认 ENABLE_CONTENT_SYNC=true，
+      # 可能覆盖 src/content/posts，造成「推了文章但 Pages 仍旧」。
+      - name: Install, build, and upload your site
+        uses: withastro/action@v3
+        with:
+          node-version: 22
+        env:
+          ENABLE_CONTENT_SYNC: "false"
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

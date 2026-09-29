@@ -1,0 +1,24 @@
+---
+/** 旧版 Sveltia CMS 入口（保留兼容） */
+export const prerender = true;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="robots" content="noindex" />
+		<title>旧版后台 · Sveltia</title>
+		<link rel="stylesheet" href="/admin/admin.css" />
+	</head>
+	<body>
+		<div class="cms-welcome">
+			<div>
+				<strong>旧版 Sveltia 后台</strong>
+				<span class="cms-welcome-hint">· 推荐使用新版 <a href="/admin/" style="color:#c5d4ff">/admin/</a></span>
+			</div>
+		</div>
+		<script is:inline src="https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js"></script>
+	</body>
+</html>

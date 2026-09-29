@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="robots" content="noindex, nofollow" />
+		<title>管理后台 · pandac 博客</title>
+		<style>
+			:root {
+				color-scheme: light;
+			}
+			body {
+				margin: 0;
+				font-family:
+					system-ui,
+					-apple-system,
+					"Segoe UI",
+					sans-serif;
+				background: #f8fafc;
+				color: #0f172a;
+			}
+			.wrap {
+				max-width: 720px;
+				margin: 3rem auto;
+				padding: 2rem;
+				line-height: 1.7;
+			}
+			h1 {
+				margin: 0 0 0.75rem;
+				font-size: 1.5rem;
+			}
+			p {
+				margin: 0 0 1rem;
+				color: #475569;
+			}
+			.box {
+				background: #fff;
+				border: 1px solid #e2e8f0;
+				border-radius: 12px;
+				padding: 1rem 1.1rem;
+				margin: 0 0 1rem;
+			}
+			ol {
+				margin: 0;
+				padding-left: 1.2rem;
+			}
+			code {
+				background: #f1f5f9;
+				padding: 0.1rem 0.35rem;
+				border-radius: 0.35rem;
+			}
+			a {
+				color: #4f6ef7;
+			}
+			.muted {
+				color: #94a3b8;
+				font-size: 0.9rem;
+				margin: 0;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<h1>管理后台仅支持本地使用</h1>
+			<p>
+				线上是 <b>GitHub Pages 静态站</b>，不能在浏览器里直接改仓库文件，因此这里无法登录编辑。
+			</p>
+			<div class="box">
+				<p style="margin: 0 0 0.5rem; color: #0f172a"><b>正确用法：</b></p>
+				<ol>
+					<li>在本机打开仓库目录</li>
+					<li>
+						执行 <code>pnpm install</code>（首次）和 <code>pnpm dev</code>
+					</li>
+					<li>
+						浏览器打开 <code>http://localhost:4321/admin/</code>
+					</li>
+					<li>本地修改并保存，确认前台效果</li>
+					<li>推送到 GitHub，等待 Pages 构建完成</li>
+				</ol>
+			</div>
+			<p><a href="/">返回博客首页</a></p>
+			<p class="muted">仓库：pandaC222/pandaC222.github.io</p>
+		</div>
+		<script>
+			// 本地开发时自动进入完整管理台（由 Astro 页面 + console.js 提供）
+			(function () {
+				var h = location.hostname;
+				var local =
+					h === "localhost" || h === "127.0.0.1" || h === "[::1]";
+				if (!local) return;
+				// 避免覆盖已经是完整后台的页面
+				if (document.querySelector(".app, .login-wrap")) return;
+				var s = document.createElement("script");
+				s.type = "module";
+				s.src = "/admin/console.js";
+				document.body.appendChild(s);
+			})();
+		</script>
+	</body>
+</html>

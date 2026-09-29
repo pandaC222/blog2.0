@@ -1,0 +1,13 @@
+node_modules/
+server/node_modules/
+server/.env
+data/*.db
+data/*.db-*
+data/migrate-*-report.json
+uploads/*
+!uploads/.gitkeep
+
+# 站点副本里不入库的本地文件
+pandaC222.github.io/.transfer-backup/
+pandaC222.github.io/.devin/
+pandaC222.github.io/src/layouts/Layout.astro.bak

@@ -1,0 +1,41 @@
+---
+/**
+ * 博客管理台（自定义 UI）
+ * 本地 pnpm dev 下可读写工作区；线上静态站仅展示使用说明。
+ */
+export const prerender = true;
+---
+
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="theme-color" content="#4f6ef7" />
+		<title>管理后台 · pandac 博客</title>
+		<link rel="icon" href="/uploads/avatar.webp" type="image/webp" />
+		<link rel="stylesheet" href="/admin/console.css" />
+	</head>
+	<body>
+		<div id="admin-root">
+			<div style="padding:2rem;font-family:system-ui;color:#64748b">
+				管理台加载中… 若长时间白屏请按 Ctrl+F5 强制刷新。
+			</div>
+		</div>
+		<script is:inline>
+			setTimeout(function () {
+				var root = document.getElementById("admin-root");
+				if (!root) return;
+				if (root.dataset.ready === "1") return;
+				if (root.querySelector(".login-wrap, .app, .admin-gate")) return;
+				root.innerHTML =
+					'<div style="padding:2rem;font-family:system-ui">' +
+					"<h2>管理台脚本未启动</h2>" +
+					"<p>请按 <b>Ctrl+F5</b> 强制刷新。若仍白屏，打开浏览器控制台（F12）查看报错。</p>" +
+					"</div>";
+			}, 3000);
+		</script>
+		<script type="module" src="/admin/console.js"></script>
+	</body>
+</html>

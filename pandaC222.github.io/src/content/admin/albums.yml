@@ -1,0 +1,2 @@
+# 相册主要通过 public/images/albums 管理；此文件预留扩展
+albums: []
