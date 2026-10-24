@@ -261,6 +261,9 @@ function albumDir(id) {
 }
 
 const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".avif", ".bmp"]);
+// 前台 album-scanner 会把这两个文件当成封面、并从照片列表里排除，后台保持一致，
+// 否则后台会把 cover.webp 也数成一张照片，误删还会把封面删掉。
+const COVER_FILE = /^cover\.(webp|jpe?g)$/i;
 
 export function listAlbums() {
 	const root = path.join(siteRoot, "public", "images", "albums");
@@ -279,16 +282,50 @@ export function listAlbums() {
 					/* keep default */
 				}
 			}
-			const photos = fs
+			const files = fs
 				.readdirSync(dir, { withFileTypes: true })
 				.filter((file) => file.isFile() && IMAGE_EXT.has(path.extname(file.name).toLowerCase()))
 				.map((file) => ({
 					name: file.name,
 					url: `/images/albums/${entry.name}/${file.name}`,
 				}));
-			const coverFile = photos.find((photo) => /^cover\.(webp|jpe?g|png)$/i.test(photo.name));
-			return { id: entry.name, info, photos, cover: coverFile?.url || photos[0]?.url || "" };
+			const coverFiles = files.filter((file) => COVER_FILE.test(file.name));
+			const photos = files.filter((file) => !COVER_FILE.test(file.name));
+			// 封面优先级和前台一致：info.cover（后台设过）> 文件夹里的 cover.webp/jpg > 第一张照片
+			const manual = typeof info.cover === "string" ? info.cover.trim() : "";
+			const cover = manual || coverFiles[0]?.url || photos[0]?.url || "";
+			const coverSource = manual ? "manual" : coverFiles.length ? "file" : photos.length ? "first" : "none";
+			return { id: entry.name, info, photos, cover, coverSource };
 		});
+}
+
+// 把某张照片设为相册封面：写进 info.json 的 cover 字段（前台 album-scanner 读它）。
+// name 传空字符串则删掉这个字段，退回「文件夹 cover 文件 → 第一张照片」的默认行为。
+export function setAlbumCover(id, name) {
+	const dir = albumDir(id);
+	if (!fs.existsSync(dir.abs)) throw fail("相册不存在", 404);
+	const infoPath = path.join(dir.abs, "info.json");
+	let next = { title: dir.id };
+	if (fs.existsSync(infoPath)) {
+		try {
+			const raw = JSON.parse(fs.readFileSync(infoPath, "utf8"));
+			if (raw && typeof raw === "object") next = { ...raw };
+		} catch {
+			/* 原 info.json 损坏时从最小结构重建 */
+		}
+	}
+	const wanted = path.basename(String(name || ""));
+	if (!wanted) {
+		delete next.cover;
+	} else {
+		if (!IMAGE_EXT.has(path.extname(wanted).toLowerCase())) throw fail("只能选图片当封面");
+		if (!fs.existsSync(path.join(dir.abs, wanted))) throw fail("这张照片不存在", 404);
+		next.cover = `/images/albums/${dir.id}/${wanted}`;
+	}
+	fs.writeFileSync(infoPath, `${JSON.stringify(next, null, 2)}\n`, "utf8");
+	// 回读一次，把最终生效的封面和来源交给后台界面显示（优先级逻辑只有 listAlbums 一处）
+	const album = listAlbums().find((item) => item.id === dir.id);
+	return { id: dir.id, cover: album?.cover || "", coverSource: album?.coverSource || "none" };
 }
 
 export function saveAlbum(id, info) {
@@ -344,4 +381,17 @@ export function removeAlbumPhoto(id, name) {
 	if (!inside(dir.abs, filePath)) throw fail("路径越界");
 	if (!fs.existsSync(filePath)) throw fail("图片不存在", 404);
 	fs.unlinkSync(filePath);
+	// 删掉的正好是「设为封面」指着的那张时，把 cover 字段一起清掉，
+	// 否则前台会拿着一个不存在的路径去渲染。
+	const infoPath = path.join(dir.abs, "info.json");
+	if (!fs.existsSync(infoPath)) return;
+	try {
+		const raw = JSON.parse(fs.readFileSync(infoPath, "utf8"));
+		if (raw && typeof raw.cover === "string" && raw.cover.trim().endsWith(`/${filename}`)) {
+			delete raw.cover;
+			fs.writeFileSync(infoPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+		}
+	} catch {
+		/* info.json 读不动就别碰它 */
+	}
 }

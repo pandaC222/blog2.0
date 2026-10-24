@@ -11,3 +11,13 @@ uploads/*
 pandaC222.github.io/.transfer-backup/
 pandaC222.github.io/.devin/
 pandaC222.github.io/src/layouts/Layout.astro.bak
+
+# 本地工作记忆：含生产账号密码等敏感信息，仓库是公开的，绝不能入库
+.workbuddy/
+
+# 一次性临时脚本与截图
+.tmp-*
+
+# 过程产物：编辑页对比截图、各阶段变更存档
+step5-edit-preview/
+*.diff

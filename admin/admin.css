@@ -72,6 +72,9 @@ html.dark {
 }
 
 * { box-sizing: border-box; }
+/* 作者样式里的 display（.btn / .field / .menu-btn 等）会盖掉浏览器默认的 [hidden]。
+   后台靠 hidden 属性藏按钮和输入框，这里显式压回去，否则藏不住。 */
+[hidden] { display: none !important; }
 html, body { height: 100%; }
 body {
   margin: 0;
@@ -119,6 +122,8 @@ a { color: var(--primary); }
 .login-card h1 { margin: 22px 0 6px; font-size: 1.75rem; }
 .muted { color: var(--text-50); margin: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-top: 16px; }
+/* .field 是竖排 flex，里面的按钮会被拉成整行宽。让它按内容宽度排。 */
+.field > .btn { align-self: flex-start; }
 .field label { font-size: 0.8rem; color: var(--text-50); }
 .field.invalid input, .field.invalid textarea, .field.invalid select { border-color: var(--caution); }
 .err { color: var(--caution); font-size: 0.85rem; min-height: 1.2em; }
@@ -232,17 +237,11 @@ html.dark .btn { color: rgba(255, 255, 255, 0.75); }
 .page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 18px; }
 .page-head h2 { margin: 0 0 4px; font-size: 1.35rem; }
 
-.card, .table-wrap {
+.table-wrap {
   background: var(--card-bg);
   border-radius: var(--radius-large);
   box-shadow: var(--shadow-card);
 }
-.card {
-  padding: 18px 18px 16px;
-  margin-bottom: 14px;
-  transition: transform 200ms var(--ease), box-shadow 200ms var(--ease);
-}
-.card.item:hover { transform: translateY(-2px); box-shadow: var(--shadow-lift); }
 .table-wrap { overflow: auto; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line-divider); vertical-align: middle; }
@@ -252,8 +251,6 @@ tbody tr { transition: background 150ms var(--ease); }
 tbody tr:hover td { background: color-mix(in srgb, var(--selection-bg) 55%, transparent); }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
 .filters > * { width: 180px; }
-.row { display: flex; gap: 12px; flex-wrap: wrap; }
-.row > .field { flex: 1; min-width: 180px; }
 .switch { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--text-75); }
 .switch input { accent-color: var(--primary); width: 16px; height: 16px; }
 .badge {
@@ -313,6 +310,43 @@ tbody tr:hover td { background: color-mix(in srgb, var(--selection-bg) 55%, tran
 }
 .chip button { border: 0; background: transparent; color: inherit; padding: 0 0 0 6px; }
 
+/* 标签胶囊输入：外框长得像普通输入框，胶囊和自适应输入框都在里面 */
+.tags-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-width: 220px;
+  max-width: 100%;
+  border: 1px solid var(--line-color);
+  background: var(--page-bg);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  transition: border-color 150ms var(--ease), background 150ms var(--ease);
+}
+.tags-box:hover { border-color: var(--primary); }
+.tags-box:focus-within {
+  border-color: var(--primary);
+  background: var(--card-bg);
+  box-shadow: 0 0 0 3px var(--selection-bg);
+}
+.tags-box .chip { flex: none; }
+.tags-box input {
+  width: auto;
+  min-width: 12ch;
+  max-width: 100%;
+  field-sizing: content;   /* 输入多长，框就跟多长；旧浏览器退化为固定宽度 */
+  border: 0;
+  padding: 3px 0;
+  background: transparent;
+}
+.tags-box input:hover, .tags-box input:focus {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
 .drop {
   border: 1px dashed var(--line-color);
   border-radius: var(--radius-large);
@@ -365,17 +399,6 @@ tbody tr:hover td { background: color-mix(in srgb, var(--selection-bg) 55%, tran
 .shot img, .shot-img { width: 100%; height: 100%; object-fit: cover; }
 .shot-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 
-/* 分区标题：小字号 + 灰色，和正文区分 */
-.sec-title {
-  margin: 0 0 2px;
-  font-size: 0.75rem;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  color: var(--text-50);
-}
-.sec-title + .field, .sec-title + .row { margin-top: 6px; }
-.sec-title.sub { margin-top: 18px; }
-
 /* 底部固定操作栏：保存 / 取消常驻可见 */
 .savebar {
   position: sticky;
@@ -395,6 +418,65 @@ tbody tr:hover td { background: color-mix(in srgb, var(--selection-bg) 55%, tran
 html.dark .savebar { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
 .savebar .spacer { flex: 1; }
 .savebar .muted { font-size: 0.8rem; margin: 0; }
+
+/* 社交链接：个人资料页每条链接一张紧凑表单卡，顺序即前台显示顺序 */
+.link-card {
+  border: 1px solid var(--line-divider);
+  background: var(--page-bg);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.link-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.link-card-head strong { font-size: 0.9rem; }
+.link-card .toolbar { margin: 0; }
+.link-card .field-grid { margin-top: 10px; }
+.link-card .field label { font-size: 0.75rem; }
+
+/* 模块开关：一排几个，别一个占一整行 */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin-top: 10px;
+}
+.features-grid .switch { margin-top: 0; }
+.switch .badge { margin-left: 8px; }
+
+/* 相册封面：预览 + 来源说明，照片格上挂「设为封面」 */
+.cover-pick { display: flex; gap: 14px; align-items: flex-start; }
+.cover-pick > img, .cover-pick .cover-empty {
+  width: 168px; height: 126px; flex: none;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--codeblock-bg);
+}
+.cover-pick .cover-empty {
+  display: grid; place-items: center;
+  color: var(--text-30); font-size: 0.78rem;
+}
+.cover-pick-body { min-width: 0; padding-top: 2px; }
+.cover-pick .cover-hint { margin: 0 0 8px; font-size: 0.8rem; color: var(--text-50); }
+
+.photo-grid figure { position: relative; width: 132px; }
+.photo-grid img { width: 132px; height: 99px; }
+.photo-grid figure.is-cover img { outline: 2px solid var(--primary); outline-offset: -2px; }
+.photo-ops { display: flex; gap: 4px; margin-top: 4px; }
+.photo-ops .btn { flex: 1; padding: 4px 6px; font-size: 0.72rem; }
+.cover-flag {
+  position: absolute; top: 4px; left: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: white;
+  font-size: 0.68rem;
+}
 
 .color-row { display: flex; gap: 8px; align-items: center; }
 .color-row input[type="color"] {
@@ -435,13 +517,135 @@ html.dark .savebar { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
 .menu-btn { display: none; }
 .top-actions { display: flex; align-items: center; gap: 8px; }
 
+/* ===========================================================================
+   编辑页版式：面板 / 分组 / 12 栏字段网格
+   列表页用的 .mini / .table-wrap 不走这套，保持原样。
+   =========================================================================== */
+
+/* 表面分三级：页底 → 卡片 → 卡内嵌块。
+   卡片补 1px 描边 + 轻阴影，区块边界才立得住（旧的 --shadow-card 是 0.5% 黑，
+   等于没有，所以整页糊成一片）。--shadow-card / --shadow-lift 不动，
+   免得连带改到列表页那批小卡片。 */
+:root {
+  --surface-inset: color-mix(in srgb, var(--page-bg) 72%, var(--card-bg));
+  --shadow-panel: 0 1px 2px rgba(0, 0, 0, 0.04), 0 3px 10px rgba(0, 0, 0, 0.03);
+}
+html.dark {
+  --surface-inset: color-mix(in srgb, var(--page-bg) 55%, var(--card-bg));
+  --shadow-panel: none;
+}
+
+.edit-form { max-width: 1120px; }
+.panel {
+  background: var(--card-bg);
+  border: 1px solid var(--line-divider);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-panel);
+  padding: 16px 20px 18px;
+  margin-bottom: 14px;
+}
+
+/* 编辑卡的头部横条：一眼看出这一张卡在编哪一条 */
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: -16px -20px 12px;
+  padding: 12px 20px;
+  background: var(--surface-inset);
+  border-bottom: 1px solid var(--line-divider);
+  border-radius: var(--radius-large) var(--radius-large) 0 0;
+}
+.panel-head strong { font-size: 0.95rem; color: var(--deep-text); }
+.panel-head .muted { font-size: 0.78rem; }
+
+/* 分组标题：深色加粗 + 右侧一条细线，把这一节圈出来但不切开卡片 */
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--deep-text);
+}
+.panel-title::after { content: ""; flex: 1; min-width: 24px; height: 1px; background: var(--line-divider); }
+/* 同一张卡里再分节（如文章页的「正文」）：补一道上分隔线 */
+.panel-title.sub {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line-divider);
+}
+.panel > .panel-title:first-child { margin-top: 0; }
+
+/* 一张卡里放多组时，组与组之间用分隔线 + 更大间距；
+   标题后面不再画线，否则两道线叠在一起。 */
+.fgroup + .fgroup { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line-divider); }
+.fgroup > .panel-title { margin-bottom: 10px; }
+.fgroup > .panel-title::after { display: none; }
+
+/* 12 栏字段网格。字段自己带 --span 决定占几栏（按语义给），窄屏一律通栏。 */
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 13px 16px;
+}
+.field-grid > * { grid-column: span var(--span, 12); }
+.field-grid > .field, .field-grid > .switch { margin-top: 0; }
+/* 开关和输入框同排时对齐到输入框的中线（输入框上面有 label、高 38px，
+   开关只有 19px；默认 stretch 会让开关浮在行中间，像错位）。 */
+.field-grid > .switch { align-self: end; margin-bottom: 9px; }
+.field-grid .tags-box { width: 100%; }   /* 和同排的输入框对齐，不再缩成一团 */
+.field-grid textarea { min-height: 84px; }
+.field-grid textarea.tall { min-height: 150px; }
+
+.hint { margin: 10px 0 0; font-size: 0.78rem; color: var(--text-50); }
+
+/* 开关成组：一块浅底，有归属，不再散落在字段之间 */
+.switch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  padding: 11px 14px;
+  background: var(--surface-inset);
+  border-radius: var(--radius);
+}
+.switch-row .switch { margin-top: 0; }
+
+/* 封面：小图 + URL + 拖拽区横排一行。竖着堆到 16:9 会白占掉半屏，
+   横排只吃一个字段的高度。 */
+.cover-field .shot-row { gap: 10px; align-items: center; }
+.cover-field .shot { width: 104px; height: 66px; }
+.cover-field .shot-fields { gap: 6px; }
+.cover-field .drop { margin-top: 0; padding: 6px 10px; font-size: 0.78rem; }
+
+/* fgroup 里的补充件：说明行、按钮条、图片列表、模块开关网格。
+   这些元素自带 margin-top，直接塞进 fgroup 会和标题的间距叠加成双份。 */
+.hint.lead { margin: 0 0 12px; }
+.fgroup > .toolbar { margin: 12px 0 0; }
+.fgroup > .drop { margin-top: 12px; }
+.fgroup > .thumbs { margin-top: 0; }
+.fgroup > .features-grid { margin-top: 0; }
+.field-grid > .link-card { margin-bottom: 0; }   /* 网格 gap 已经负责间距 */
+.shot-fields .toolbar { margin: 0; }             /* 图 + 地址 + 按钮竖排时别再叠 margin */
+
+/* 横幅：一行一张，缩略图 / 地址 / 操作按钮并排，别竖着堆三行 */
+.banner-item { display: flex; align-items: center; gap: 10px; }
+.banner-item .shot { width: 104px; height: 58px; }
+.banner-item input { flex: 1; min-width: 0; }
+
+/* 正文编辑器：工具条收小，编辑区和预览区等高对齐 */
+.toolbar .btn { padding: 5px 10px; font-size: 0.8rem; }
+.editor { gap: 14px; }
+.preview { border: 1px solid var(--line-divider); }
+
 @keyframes rise {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .content, .login-card, .toast, .dialog { animation: none; }
-  .btn.primary:hover, .card.item:hover { transform: none; }
+  .btn.primary:hover { transform: none; }
 }
 
 @media (max-width: 1100px) {
@@ -455,6 +659,13 @@ html.dark .savebar { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
   .shell.nav-open .backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 25; }
   .menu-btn { display: inline-flex; }
   .editor { grid-template-columns: 1fr; }
+}
+/* 窄屏字段一律通栏，别让 span 3 的框挤成一条 */
+@media (max-width: 820px) {
+  .field-grid > * { grid-column: 1 / -1; }
+  .edit-form { max-width: none; }
+  .panel { padding: 16px 14px 18px; }
+  .panel-head { margin: -16px -14px 14px; padding: 12px 14px; }
 }
 @media (min-width: 1280px) { .content { padding: 32px 36px 56px; } }
 @media (min-width: 1440px) { .content { padding: 36px 48px 64px; } }

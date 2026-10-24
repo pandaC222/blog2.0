@@ -1,9 +1,47 @@
 ---
-// 极简版 Footer：彻底移除显示和报错逻辑
-import { footerConfig, profileConfig } from "../../../config";
-import { url } from "../../../utils/url-utils";
+// 极简 Footer：只渲染 footerConfig 里配置的自定义内容（备案号等）。
+// 没有配置时整块不渲染，不占位、不影响布局。
+import { footerConfig } from "../../../config";
 
+const customHtml = (footerConfig.enable ? footerConfig.customHtml || "" : "").trim();
 const currentYear = new Date().getFullYear();
 ---
 
-<footer class="hidden"></footer>
+{
+	customHtml && (
+		<footer class="blog-footer text-50">
+			<div class="footer-inner" set:html={customHtml} />
+		</footer>
+	)
+}
+
+<style>
+	.blog-footer {
+		padding: 20px 12px 28px;
+		text-align: center;
+		/* 用 px 不用 rem：主题把根字号缩到了 13.6px，0.75rem 会变成 10.2px，太小 */
+		font-size: 12px;
+		line-height: 1.9;
+		letter-spacing: 0.01em;
+	}
+
+	.footer-inner :global(a) {
+		color: inherit;
+		text-decoration: none;
+		transition: color 150ms ease;
+	}
+
+	.footer-inner :global(a:hover) {
+		color: oklch(0.62 0.14 var(--hue, 240));
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.footer-inner :global(p) {
+		margin: 0;
+	}
+
+	.footer-inner :global(p + p) {
+		margin-top: 4px;
+	}
+</style>

@@ -15,6 +15,7 @@ import {
 	saveAlbum,
 	saveAlbumPhoto,
 	savePublicUpload,
+	setAlbumCover,
 	writeAbout,
 	writeBoard,
 	writePostFile,
@@ -334,6 +335,15 @@ export function registerAdminContent(app, requireAuth) {
 		try {
 			removeAlbum(req.params.id);
 			res.json({ ok: true });
+		} catch (error) {
+			sendError(res, error);
+		}
+	});
+
+	// 把某张照片设为相册封面。name 传空则清除，退回默认封面。
+	app.post("/api/admin/albums/:id/cover", requireAuth, (req, res) => {
+		try {
+			res.json({ ok: true, ...setAlbumCover(req.params.id, req.body?.name) });
 		} catch (error) {
 			sendError(res, error);
 		}

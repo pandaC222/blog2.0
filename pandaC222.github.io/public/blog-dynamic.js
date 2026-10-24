@@ -4,7 +4,9 @@
  * using the same card-base classes, and only after the API responds.
  */
 (function () {
-	const API_ORIGIN = "http://localhost:3000";
+	// 本地开发前台在 4321、后端在 3000，不同源只能写死；
+	// 生产环境 nginx 把 /api 反代到后端，同源即可，所以留空。
+	const API_ORIGIN = location.port === "4321" ? "http://localhost:3000" : "";
 	const recentViews = new Map();
 
 	function slugFrom(value) {

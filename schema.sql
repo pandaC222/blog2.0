@@ -104,6 +104,10 @@ CREATE TABLE IF NOT EXISTS admin_users (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
     username      TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
+    -- Unix 秒。0 = 从未改过密码（此时所有已签发的 token 都有效）。
+    -- 改密时写入当前时刻，requireAuth 会拒绝 iat 早于它的 token，
+    -- 也就是改完密码后其它设备上的登录会失效。
+    pwd_changed_at INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S+08:00', 'now', '+8 hours'))
 );
 

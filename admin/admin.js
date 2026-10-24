@@ -1,5 +1,7 @@
 const TOKEN_KEY = "blog2-admin-token";
-const SITE = "http://localhost:4321";
+// 本地后台在 3000、前台在 4321，拼缩略图要带前台域名；
+// 生产两者同域（都由 nginx 托管），直接用相对路径。
+const SITE = location.port === "3000" ? "http://localhost:4321" : "";
 const app = document.querySelector("#app");
 
 const NAV = [
@@ -32,11 +34,56 @@ const TIMELINE_TYPES = [["education", "教育"], ["work", "工作"], ["project",
 const ANIME_STATUS = [["watching", "在看"], ["planned", "想看"], ["completed", "看完"], ["onhold", "搁置"], ["dropped", "弃番"]];
 const MOODS = [["happy", "happy"], ["开心", "开心"], ["平静", "平静"], ["兴奋", "兴奋"], ["疲惫", "疲惫"], ["难过", "难过"], ["生气", "生气"], ["一般", "一般"]];
 
+// 个人资料社交链接的常用图标。值是 Iconify 名称，对应前台已装的图标集
+// （fa7-brands / fa7-solid / simple-icons，见站点 package.json）。
+const LINK_ICONS = [
+	["fa7-brands:github", "GitHub"],
+	["fa7-brands:bilibili", "Bilibili"],
+	["fa7-brands:weibo", "微博"],
+	["simple-icons:zhihu", "知乎"],
+	["fa7-brands:x-twitter", "Twitter / X"],
+	["fa7-brands:telegram", "Telegram"],
+	["fa7-brands:qq", "QQ"],
+	["fa7-solid:envelope", "邮箱"],
+	["fa7-solid:rss", "RSS"],
+	["fa7-solid:link", "个人网站 / 链接"],
+];
+const CUSTOM_ICON = "__custom__";
+const DEFAULT_ICON = "fa7-solid:link";
+
+// 模块开关的中文名。yml 里出现没见过的键时原样显示，不新增键也不丢键。
+const FEATURE_LABELS = {
+	anime: "追番",
+	diary: "日记",
+	friends: "友链",
+	projects: "项目",
+	skills: "技能",
+	timeline: "时间线",
+	albums: "相册",
+	devices: "设备",
+};
+
 const LISTS = {
-	friends: { key: "items", fields: [["id", "序号", "text"], ["title", "站点名称", "text"], ["imgurl", "头像", "image", "friends"], ["desc", "简介", "textarea"], ["siteurl", "网址", "text"], ["tags", "标签", "tags"]] },
-	projects: { key: "items", fields: [["id", "ID", "text"], ["title", "标题", "text"], ["description", "简介", "textarea"], ["image", "封面", "image", "projects"], ["category", "分类", "text"], ["status", "状态", "select", PROJECT_STATUS], ["techStack", "技术栈", "tags"], ["sourceCode", "源码", "text"], ["visitUrl", "演示", "text"], ["startDate", "开始", "date"], ["endDate", "结束", "date"], ["featured", "精选", "bool"]] },
-	skills: { key: "items", fields: [["id", "ID", "text"], ["name", "名称", "text"], ["description", "简介", "textarea"], ["icon", "图标", "text"], ["category", "分类", "select", SKILL_CATEGORIES], ["level", "等级", "select", SKILL_LEVELS], ["expYears", "经验（年）", "number"], ["expMonths", "经验（月）", "number"], ["projects", "相关项目", "tags"], ["color", "颜色", "color"]] },
-	timeline: { key: "items", fields: [["id", "ID", "text"], ["title", "标题", "text"], ["description", "描述", "textarea"], ["type", "类型", "select", TIMELINE_TYPES], ["startDate", "开始", "date"], ["endDate", "结束", "date"], ["organization", "组织", "text"], ["position", "职位", "text"], ["location", "地点", "text"], ["skills", "技能", "tags"], ["color", "颜色", "color"], ["featured", "精选", "bool"]] },
+	friends: {
+		key: "items",
+		fields: [["id", "序号", "text"], ["title", "站点名称", "text"], ["imgurl", "头像", "image", "friends"], ["desc", "简介", "textarea"], ["siteurl", "网址", "text"], ["tags", "标签", "tags"]],
+		groups: [["基本信息", ["id", "title"]], ["头像与链接", ["imgurl", "siteurl"]], ["说明", ["desc", "tags"]]],
+	},
+	projects: {
+		key: "items",
+		fields: [["id", "ID", "text"], ["title", "标题", "text"], ["description", "简介", "textarea"], ["image", "封面", "image", "projects"], ["category", "分类", "text"], ["status", "状态", "select", PROJECT_STATUS], ["techStack", "技术栈", "tags"], ["sourceCode", "源码", "text"], ["visitUrl", "演示", "text"], ["startDate", "开始", "date"], ["endDate", "结束", "date"], ["featured", "精选", "bool"]],
+		groups: [["基本信息", ["id", "title", "category", "status", "featured"]], ["介绍", ["image", "description", "techStack"]], ["链接与时间", ["sourceCode", "visitUrl", "startDate", "endDate"]]],
+	},
+	skills: {
+		key: "items",
+		fields: [["id", "ID", "text"], ["name", "名称", "text"], ["description", "简介", "textarea"], ["icon", "图标", "text"], ["category", "分类", "select", SKILL_CATEGORIES], ["level", "等级", "select", SKILL_LEVELS], ["expYears", "经验（年）", "number"], ["expMonths", "经验（月）", "number"], ["projects", "相关项目", "tags"], ["color", "颜色", "color"]],
+		groups: [["基本信息", ["id", "name", "category", "level"]], ["图标与颜色", ["icon", "color"]], ["经验", ["expYears", "expMonths"]], ["说明", ["description", "projects"]]],
+	},
+	timeline: {
+		key: "items",
+		fields: [["id", "ID", "text"], ["title", "标题", "text"], ["description", "描述", "textarea"], ["type", "类型", "select", TIMELINE_TYPES], ["startDate", "开始", "date"], ["endDate", "结束", "date"], ["organization", "组织", "text"], ["position", "职位", "text"], ["location", "地点", "text"], ["skills", "技能", "tags"], ["color", "颜色", "color"], ["featured", "精选", "bool"]],
+		groups: [["基本信息", ["id", "title", "type", "featured"]], ["组织与时间", ["organization", "position", "location", "startDate", "endDate"]], ["说明", ["description", "skills", "color"]]],
+	},
 };
 
 const state = { user: "", view: "posts", dirty: false, title: "文章" };
@@ -63,6 +110,7 @@ const ICON_PATH = {
 	theme: '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/>',
 	menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
 	logout: '<path d="M10 7V5h9v14h-9v-2"/><path d="M13 12H4M7 9l-3 3 3 3"/>',
+	lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
 	back: '<path d="M14 6l-6 6 6 6"/>',
 };
 
@@ -95,7 +143,27 @@ async function api(path, options = {}) {
 		throw new Error(data.error || "未登录");
 	}
 	if (!res.ok) throw new Error(data.error || res.statusText);
+	// 内容保存会写回 .md/.yml，而前台是静态站，不重建就不会变。
+	// 这里只负责发起，不等结果，失败也不打断保存。
+	if (options.method && options.method !== "GET" && path.startsWith("/api/admin/content/")) {
+		queueRebuild();
+	}
 	return data;
+}
+
+// 连续保存（比如一口气改完表单点保存）合并成一次构建，避免排好几次队
+let rebuildTimer = 0;
+function queueRebuild() {
+	clearTimeout(rebuildTimer);
+	rebuildTimer = setTimeout(async () => {
+		try {
+			const result = await api("/api/admin/rebuild", { method: "POST" });
+			if (!result.queued) toast("前台已开始重建，约 1-2 分钟后刷新可见");
+		} catch (error) {
+			// 没配 REBUILD_CMD（比如纯本地开发）不算错误，静默跳过
+			if (!/未配置/.test(error.message)) toast("重建失败：" + error.message, "err");
+		}
+	}, 1500);
 }
 
 function esc(value) {
@@ -109,6 +177,62 @@ function esc(value) {
 function splitList(value) {
 	const list = Array.isArray(value) ? value : String(value ?? "").split(/[,，]/);
 	return [...new Set(list.map((item) => String(item).trim()).filter(Boolean))];
+}
+
+// 标签胶囊输入：.tags-box 盒子（长得像输入框）里放胶囊 + 一个自适应输入框。
+// 回车 / 中英文逗号确认，× 删除，失焦把残字收进胶囊。tags 是调用方持有的数组，直接改它。
+// 返回 { commit, set }：commit() 在提交表单前收口还没确认的字；set(list) 整份替换后重画。
+function bindTagBox(box, tags) {
+	const input = box.querySelector("input");
+	const draw = () => {
+		box.querySelectorAll(".chip").forEach((chip) => chip.remove());
+		input.insertAdjacentHTML("beforebegin", tags.map((tag, index) => `<span class="chip" data-tag="${esc(tag)}">${esc(tag)}<button type="button" data-i="${index}">×</button></span>`).join(""));
+		box.querySelectorAll(".chip button").forEach((node) => {
+			node.onclick = () => {
+				tags.splice(Number(node.dataset.i), 1);
+				state.dirty = true;
+				draw();
+			};
+		});
+	};
+	const commit = () => {
+		if (!input.value.trim()) return;
+		splitList(input.value).forEach((tag) => {
+			if (!tags.includes(tag)) tags.push(tag);
+		});
+		input.value = "";
+		state.dirty = true;
+		draw();
+	};
+	input.addEventListener("keydown", (event) => {
+		if (event.key === "Enter" || event.key === "," || event.key === "，") {
+			event.preventDefault();
+			commit();
+		}
+	});
+	input.addEventListener("blur", commit);
+	draw();
+	return {
+		commit,
+		set: (values) => {
+			tags.length = 0;
+			tags.push(...values);
+			draw();
+		},
+	};
+}
+
+// 把卡片里所有 [data-tags] 的胶囊输入接上。数组挂在 card.__tags 上，
+// card.__tagBoxes 供 readCard 收口和 B 站抓取那种整份替换的场景用。
+function bindTagsFields(card, fields, current) {
+	card.__tags = {};
+	card.__tagBoxes = {};
+	card.querySelectorAll("[data-tags]").forEach((box) => {
+		const key = box.dataset.tags;
+		const seed = current?.[key];
+		card.__tags[key] = Array.isArray(seed) ? [...seed] : splitList(seed ?? "");
+		card.__tagBoxes[key] = bindTagBox(box, card.__tags[key]);
+	});
 }
 
 function lines(value) {
@@ -162,6 +286,57 @@ function promptBox(title, label) {
 		};
 		modal.querySelector("textarea").focus();
 	});
+}
+
+// 修改密码弹窗。三段输入（当前 / 新 / 确认），先在本地对一遍再打接口，
+// 错在哪一条就写在哪一条上方的提示行里（后端返回的错误也走同一行）。
+// 成功后后端会下发重新签发的 token，本机登录态无缝续上；其它设备的登录作废。
+function passwordDialog() {
+	const modal = document.createElement("div");
+	modal.className = "modal";
+	modal.innerHTML = `<form class="dialog" role="dialog">
+		<h3>修改密码</h3>
+		<div class="field"><label>当前密码</label><input name="current" type="password" autocomplete="current-password" required></div>
+		<div class="field"><label>新密码</label><input name="next" type="password" autocomplete="new-password" required></div>
+		<div class="field"><label>确认新密码</label><input name="confirm" type="password" autocomplete="new-password" required></div>
+		<p class="muted" style="font-size:0.8rem;margin:6px 0 0">至少 8 位。改完之后，其它设备上已经登录的会话会失效。</p>
+		<p class="err"></p>
+		<div class="actions"><button class="btn" data-no type="button">取消</button><button class="btn primary" type="submit">确认修改</button></div>
+	</form>`;
+	document.body.append(modal);
+	const err = modal.querySelector(".err");
+	modal.querySelector("[data-no]").onclick = () => modal.remove();
+	modal.querySelector("form").onsubmit = async (event) => {
+		event.preventDefault();
+		const form = event.target;
+		const input = new FormData(form);
+		const current = String(input.get("current") || "");
+		const next = String(input.get("next") || "");
+		err.textContent = "";
+		if (next.length < 8) {
+			err.textContent = "新密码至少 8 位";
+			return;
+		}
+		if (next !== String(input.get("confirm") || "")) {
+			err.textContent = "两次输入的新密码不一致";
+			return;
+		}
+		if (next === current) {
+			err.textContent = "新密码和当前密码一样";
+			return;
+		}
+		try {
+			await withButton(form.querySelector("[type=submit]"), async () => {
+				const result = await api("/api/admin/password", { method: "POST", body: { current, next } });
+				if (result.token) sessionStorage.setItem(TOKEN_KEY, result.token);
+				modal.remove();
+				toast("密码已修改");
+			});
+		} catch (error) {
+			err.textContent = error.message;
+		}
+	};
+	modal.querySelector("input").focus();
 }
 
 function markDirty(form) {
@@ -237,6 +412,58 @@ function pic(url, poster) {
 	return `<div class="pic${poster ? " poster" : ""}">${url ? `<img src="${esc(img(url))}" alt="" referrerpolicy="no-referrer">` : `<span class="muted">无图</span>`}</div>`;
 }
 
+/* 相册封面。前台 album-scanner 的优先级是 info.cover（后台写）> 文件夹里的
+   cover.webp/cover.jpg > 第一张照片。后台只动 info.cover，所以要如实说明
+   当前这张图是从哪来的，用户才知道「恢复默认」会退到什么。 */
+function coverHintText(source, cover) {
+	if (source === "manual") return `手动指定：${String(cover).split("/").pop()}`;
+	if (source === "file") return "用的是相册文件夹里的 cover 文件";
+	if (source === "first") return "自动：默认取第一张照片";
+	return "还没有照片，先上传一张";
+}
+
+function coverPickHtml(album) {
+	const cover = album.cover || "";
+	return `${cover ? `<img src="${esc(img(cover))}" alt="" referrerpolicy="no-referrer">` : '<div class="cover-empty">无封面</div>'}
+		<div class="cover-pick-body">
+			<p class="cover-hint">${esc(coverHintText(album.coverSource, cover))}</p>
+			<button class="btn" type="button" data-cover-reset ${album.coverSource === "manual" ? "" : "hidden"}>恢复默认封面</button>
+		</div>`;
+}
+
+function photoFigureHtml(photo, cover) {
+	const isCover = Boolean(cover) && String(cover).endsWith(`/${photo.name}`);
+	return `<figure data-name="${esc(photo.name)}"${isCover ? ' class="is-cover"' : ""}>
+		<img src="${esc(img(photo.url))}" alt="" referrerpolicy="no-referrer">
+		${isCover ? '<span class="cover-flag">封面</span>' : ""}
+		<div class="photo-ops">
+			<button class="btn" type="button" data-set-cover="${esc(photo.name)}">设为封面</button>
+			<button class="btn danger" type="button" data-photo="${esc(photo.name)}">删除</button>
+		</div>
+	</figure>`;
+}
+
+// 设完封面只补这几处 DOM，不整页重画 —— 表单里可能还有没保存的修改。
+function paintCover(card, cover, source) {
+	const box = card.querySelector("#coverbox");
+	box.querySelector(".cover-hint").textContent = coverHintText(source, cover);
+	box.querySelector("img")?.remove();
+	box.querySelector(".cover-empty")?.remove();
+	box.insertAdjacentHTML(
+		"afterbegin",
+		cover ? `<img src="${esc(img(cover))}" alt="" referrerpolicy="no-referrer">` : '<div class="cover-empty">无封面</div>',
+	);
+	card.querySelector("[data-cover-reset]").hidden = source !== "manual";
+	const current = cover ? String(cover).split("/").pop() : "";
+	card.querySelectorAll(".photo-grid figure").forEach((figure) => {
+		const on = Boolean(current) && figure.dataset.name === current;
+		figure.classList.toggle("is-cover", on);
+		const flag = figure.querySelector(".cover-flag");
+		if (on && !flag) figure.insertAdjacentHTML("afterbegin", '<span class="cover-flag">封面</span>');
+		if (!on && flag) flag.remove();
+	});
+}
+
 function bindImagePreview(root) {
 	root.querySelectorAll("[data-shot]").forEach((box) => {
 		const input = box.parentElement.querySelector(`[data-key="${box.dataset.shot}"]`);
@@ -294,6 +521,7 @@ function shell() {
 					<div class="top-actions">
 						<span class="user">${esc(state.user)}</span>
 						<button class="btn ghost icon-btn" id="theme" type="button" title="切换深色">${icon("theme")}</button>
+						<button class="btn ghost icon-btn" id="password" type="button" title="修改密码">${icon("lock")}</button>
 						<button class="btn" id="logout" type="button">${icon("logout")}退出</button>
 					</div>
 				</header>
@@ -304,6 +532,7 @@ function shell() {
 		button.onclick = () => open(button.dataset.nav);
 	});
 	app.querySelector("#theme").onclick = toggleTheme;
+	app.querySelector("#password").onclick = () => passwordDialog();
 	app.querySelector("#logout").onclick = () => {
 		sessionStorage.removeItem(TOKEN_KEY);
 		state.dirty = false;
@@ -390,6 +619,23 @@ function pageHead(panel, title, hint, actions) {
 	if (actions) panel.querySelector("#actions").append(actions);
 	return panel.querySelector("#body");
 }
+
+// 单表单板块共用的底部固定操作栏：保存常驻可见，右侧一行说明。
+// 传 cancelId 就多一个「返回列表」按钮（列表页的编辑态用）。
+function formFooter(hint = "保存后立刻写入文件", cancelId = "") {
+	const cancel = cancelId ? `<button class="btn" type="button" id="${esc(cancelId)}">返回列表</button>` : "";
+	return `<div class="savebar"><button class="btn primary" type="submit">保存</button>${cancel}<span class="spacer"></span><span class="muted">${esc(hint)}</span></div>`;
+}
+
+// 单表单板块（个人资料 / 公告 / 音乐 / 看板娘 …）的版式积木。
+// 和列表页的编辑态共用同一套 .panel + .fgroup + 12 栏网格，
+// 区别只是没有「#N 名称 + 文件名」那行 .panel-head（页面标题由 pageHead 给）。
+const fGrid = (inner) => `<div class="field-grid">${inner}</div>`;
+const fGroup = (title, inner) => `<section class="fgroup"><h3 class="panel-title">${esc(title)}</h3>${fGrid(inner)}</section>`;
+const fFld = (span, label, control) => `<div class="field" style="--span:${span}"><label>${esc(label)}</label>${control}</div>`;
+// span 传 0 表示「不参与 12 栏网格」（放进 .switch-row 时用）。
+const fSw = (span, label, control) => `<label class="switch"${span ? ` style="--span:${span}"` : ""}>${control} ${esc(label)}</label>`;
+const fSwRow = (inner) => `<div class="switch-row">${inner}</div>`;
 
 async function renderPosts(panel) {
 	const button = Object.assign(document.createElement("button"), {
@@ -537,31 +783,32 @@ async function renderPostEditor(slug) {
 	const fm = file.data || {};
 	const tags = Array.isArray(fm.tags) ? [...fm.tags] : [];
 	panel.innerHTML = `
-		<form id="post">
-			<div class="card">
-				<h3 class="sec-title">基本信息</h3>
-				<div class="row">
-					<div class="field" style="flex:2"><label>标题</label><input name="title" value="${esc(fm.title || "")}"></div>
-					<div class="field"><label>slug（文件名）</label><input name="slug" value="${esc(file.slug || "")}"></div>
+		<form id="post" class="edit-form">
+			<section class="panel">
+				<h3 class="panel-title">基本信息</h3>
+				<div class="field-grid">
+					<div class="field" style="--span:8"><label>标题</label><input name="title" value="${esc(fm.title || "")}"></div>
+					<div class="field" style="--span:4"><label>slug（文件名）</label><input name="slug" value="${esc(file.slug || "")}"></div>
+					<div class="field" style="--span:4"><label>发布时间</label><input name="pwhen" type="datetime-local" value="${esc(dtLocal(fm.published))}"></div>
+					<div class="field" style="--span:4"><label>更新时间（可空）</label><input name="uwhen" type="datetime-local" value="${esc(dtLocal(fm.updated))}"></div>
 				</div>
-				<div class="row">
-					<div class="field"><label>发布时间（00:00 按仅日期保存）</label><input name="pwhen" type="datetime-local" value="${esc(dtLocal(fm.published))}"></div>
-					<div class="field"><label>更新时间（可空，00:00 按仅日期保存）</label><input name="uwhen" type="datetime-local" value="${esc(dtLocal(fm.updated))}"></div>
+				<p class="hint">时间留 00:00 时按「仅日期」保存。</p>
+			</section>
+			<section class="panel">
+				<h3 class="panel-title">分类与标签</h3>
+				<div class="field-grid">
+					<div class="field" style="--span:4"><label>分类</label><select name="category"><option value="">未分类</option>${categories.map((item) => `<option ${item === fm.category ? "selected" : ""}>${esc(item)}</option>`).join("")}<option value="__new">新建分类</option></select><input name="categoryNew" placeholder="新分类" hidden></div>
+					<div class="field" style="--span:3"><label>排序 priority</label><input name="priority" type="number" value="${fm.priority ?? ""}"></div>
+					<div class="field" style="--span:12"><label>标签（回车或逗号确认，中文逗号会拆开）</label><div class="tags-box" id="chips"><input placeholder="算法，周赛"></div></div>
 				</div>
-			</div>
-			<div class="card">
-				<h3 class="sec-title">分类与标签</h3>
-				<div class="row">
-					<div class="field" style="flex:2"><label>分类</label><select name="category"><option value="">未分类</option>${categories.map((item) => `<option ${item === fm.category ? "selected" : ""}>${esc(item)}</option>`).join("")}<option value="__new">新建分类</option></select><input name="categoryNew" placeholder="新分类" style="margin-top:8px;display:none"></div>
-					<div class="field"><label>排序 priority</label><input name="priority" type="number" value="${fm.priority ?? ""}"></div>
+			</section>
+			<section class="panel">
+				<h3 class="panel-title">内容</h3>
+				<div class="field-grid">
+					<div class="field" style="--span:7"><label>摘要</label><textarea name="description">${esc(fm.description || "")}</textarea></div>
+					<div class="field cover-field" style="--span:5"><label>封面</label><div class="shot-row"><div class="shot big" data-shot="image"></div><div class="shot-fields"><input name="image" data-key="image" value="${esc(fm.image || "")}"><div class="drop" id="cover-drop">拖拽或点击选择<input type="file" accept="image/*" id="cover-file" hidden></div></div></div></div>
 				</div>
-				<div class="field"><label>标签（回车或逗号确认，中文逗号会拆开）</label><div class="chips" id="chips"></div><input id="tag-input" placeholder="算法，周赛"></div>
-			</div>
-			<div class="card">
-				<h3 class="sec-title">内容</h3>
-				<div class="field"><label>摘要</label><textarea name="description">${esc(fm.description || "")}</textarea></div>
-				<div class="field"><label>封面</label><div class="shot-row"><div class="shot big" data-shot="image"></div><div class="shot-fields"><input name="image" data-key="image" value="${esc(fm.image || "")}"><div class="drop" id="cover-drop">拖拽图片到这里，或点击选择<input type="file" accept="image/*" id="cover-file" hidden></div></div></div></div>
-				<h3 class="sec-title sub">正文</h3>
+				<h3 class="panel-title sub">正文</h3>
 				<div class="toolbar">
 					<button class="btn" type="button" data-wrap="**">加粗</button>
 					<button class="btn" type="button" data-wrap="*">斜体</button>
@@ -575,16 +822,16 @@ async function renderPostEditor(slug) {
 					<textarea name="body">${esc(file.body || "")}</textarea>
 					<div class="preview" id="preview"></div>
 				</div>
-				<p class="muted">表单没展示的 frontmatter 会保留。</p>
-			</div>
-			<div class="card">
-				<h3 class="sec-title">设置</h3>
-				<div class="row">
+				<p class="hint">表单没展示的 frontmatter 会保留。</p>
+			</section>
+			<section class="panel">
+				<h3 class="panel-title">设置</h3>
+				<div class="switch-row">
 					<label class="switch"><input name="draft" type="checkbox" ${fm.draft ? "checked" : ""}> 草稿</label>
 					<label class="switch"><input name="pinned" type="checkbox" ${fm.pinned ? "checked" : ""}> 置顶</label>
 					<label class="switch"><input name="comment" type="checkbox" ${fm.comment === false ? "" : "checked"}> 允许评论</label>
 				</div>
-			</div>
+			</section>
 			<div class="savebar">
 				<button class="btn primary" type="submit">保存</button>
 				<button class="btn" type="button" id="back">取消</button>
@@ -642,44 +889,14 @@ async function renderPostEditor(slug) {
 	const category = form.elements.category;
 	const categoryNew = form.elements.categoryNew;
 	category.onchange = () => {
-		categoryNew.style.display = category.value === "__new" ? "" : "none";
+		categoryNew.hidden = category.value !== "__new";
 	};
-	const chipBox = panel.querySelector("#chips");
-	const tagInput = panel.querySelector("#tag-input");
-	const drawTags = () => {
-		chipBox.innerHTML = tags
-			.map((tag, index) => `<span class="chip">${esc(tag)}<button type="button" data-i="${index}">×</button></span>`)
-			.join("");
-		chipBox.querySelectorAll("button").forEach((node) => {
-			node.onclick = () => {
-				tags.splice(Number(node.dataset.i), 1);
-				state.dirty = true;
-				drawTags();
-			};
-		});
-	};
-	drawTags();
-	const commitTagInput = () => {
-		if (!tagInput.value.trim()) return;
-		splitList(tagInput.value).forEach((tag) => {
-			if (!tags.includes(tag)) tags.push(tag);
-		});
-		tagInput.value = "";
-		state.dirty = true;
-		drawTags();
-	};
-	tagInput.addEventListener("keydown", (event) => {
-		if (event.key === "Enter" || event.key === "," || event.key === "，") {
-			event.preventDefault();
-			commitTagInput();
-		}
-	});
-	tagInput.addEventListener("blur", commitTagInput);
+	const tagBox = bindTagBox(panel.querySelector("#chips"), tags);
 	markDirty(form);
 	panel.querySelector("#back").onclick = () => open("posts");
 	form.onsubmit = async (event) => {
 		event.preventDefault();
-		commitTagInput();
+		tagBox.commit();
 		if (!requireFields(form, ["title", "slug", "pwhen"])) {
 			toast("请填写标题、slug 和发布时间", "err");
 			return;
@@ -754,9 +971,15 @@ function commitItem(original, draft, fields) {
 }
 
 function readCard(card, fields, current) {
+	// 胶囊输入里可能还有没回车确认的字，先收进数组再读
+	Object.values(card.__tagBoxes || {}).forEach((box) => box.commit());
 	const draft = { ...current };
 	fields.forEach(([key, , type]) => {
 		if (type === "images") return;
+		if (type === "tags") {
+			if (card.__tags?.[key]) draft[key] = card.__tags[key];
+			return;
+		}
 		const node = card.querySelector(`[data-key="${key}"]`);
 		if (!node) return;
 		draft[key] = type === "bool" ? node.checked : node.value;
@@ -792,33 +1015,81 @@ function bindColors(root) {
 	});
 }
 
+// 字段在 12 栏网格里占几栏。按语义给，不按"一律通栏"。
+// 查不到 key 就按类型兜底，再查不到按普通文本（半栏）。
+const FIELD_SPAN = {
+	// 窄：短标识、纯数字 —— 给 900px 是浪费
+	slug: 3, priority: 3, score: 3, progress: 3, totalEpisodes: 3, rating: 3,
+	expYears: 3, expMonths: 3, interval: 3, year: 3, width: 3, height: 3,
+	// 中：序号、下拉、日期、颜色
+	id: 4, category: 4, level: 4, status: 4, type: 4, location: 4, mood: 4, date: 4,
+	organization: 4, position: 4, startDate: 4, endDate: 4, studio: 4, episodes: 4,
+	color: 6, icon: 6, link: 6, sourceCode: 6, visitUrl: 6, imgurl: 6,
+	// 宽：标题类字段是主角，8 栏和 4 栏的序号正好凑满一行
+	title: 8, name: 8,
+};
+// 类型兜底。图片默认通栏：除「头像」这种明确要配对的小图（imgurl 6）外，
+// 封面独占一行比挤半行好 —— 左右各留 6 栏空白反而更空。
+const SPAN_BY_TYPE = { number: 3, date: 4, select: 4, color: 6, bool: 4, image: 12 };
+
+function spanOf(key, type) {
+	if (type === "tags" || type === "textarea" || type === "images") return 12;
+	if (FIELD_SPAN[key]) return FIELD_SPAN[key];
+	if (SPAN_BY_TYPE[type]) return SPAN_BY_TYPE[type];
+	return 6;
+}
+
 function fieldHtml(field, value) {
 	const [key, label, type] = field;
+	const span = ` style="--span:${spanOf(key, type)}"`;
 	if (type === "textarea") {
-		return `<div class="field"><label>${esc(label)}</label><textarea data-key="${key}">${esc(value ?? "")}</textarea></div>`;
+		return `<div class="field"${span}><label>${esc(label)}</label><textarea data-key="${key}">${esc(value ?? "")}</textarea></div>`;
 	}
 	if (type === "bool") {
-		return `<label class="switch"><input data-key="${key}" type="checkbox" ${value ? "checked" : ""}> ${esc(label)}</label>`;
+		return `<label class="switch"${span}><input data-key="${key}" type="checkbox" ${value ? "checked" : ""}> ${esc(label)}</label>`;
 	}
 	if (type === "select") {
-		return `<div class="field"><label>${esc(label)}</label><select data-key="${key}">${selectOptions(field[3] || [], value ?? "")}</select></div>`;
+		return `<div class="field"${span}><label>${esc(label)}</label><select data-key="${key}">${selectOptions(field[3] || [], value ?? "")}</select></div>`;
 	}
 	if (type === "color") {
 		const current = value || "#3B82F6";
-		return `<div class="field"><label>${esc(label)}</label><div class="color-row"><input type="color" data-color-picker value="${esc(/^#[0-9a-fA-F]{6}$/.test(current) ? current : "#3B82F6")}"><input data-key="${key}" value="${esc(current)}"></div></div>`;
+		return `<div class="field"${span}><label>${esc(label)}</label><div class="color-row"><input type="color" data-color-picker value="${esc(/^#[0-9a-fA-F]{6}$/.test(current) ? current : "#3B82F6")}"><input data-key="${key}" value="${esc(current)}"></div></div>`;
 	}
 	if (type === "date") {
-		return `<div class="field"><label>${esc(label)}</label><input data-key="${key}" type="date" value="${esc(String(value || "").slice(0, 10))}"></div>`;
+		return `<div class="field"${span}><label>${esc(label)}</label><input data-key="${key}" type="date" value="${esc(String(value || "").slice(0, 10))}"></div>`;
 	}
 	if (type === "images") {
 		const list = Array.isArray(value) ? value : [];
-		return `<div class="field" data-images="${key}"><label>${esc(label)}</label><div class="thumbs">${list.map((url) => `<figure><img src="${esc(img(url))}" alt="" referrerpolicy="no-referrer"><button class="btn danger" type="button" data-rm="${esc(url)}">移除</button></figure>`).join("")}</div><div class="drop" data-drop>拖拽或点击上传<input type="file" accept="image/*" hidden data-file></div></div>`;
+		return `<div class="field"${span} data-images="${key}"><label>${esc(label)}</label><div class="thumbs">${list.map((url) => `<figure><img src="${esc(img(url))}" alt="" referrerpolicy="no-referrer"><button class="btn danger" type="button" data-rm="${esc(url)}">移除</button></figure>`).join("")}</div><div class="drop" data-drop>拖拽或点击上传<input type="file" accept="image/*" hidden data-file></div></div>`;
 	}
 	if (type === "image") {
 		const poster = field[4] === "poster" ? ' data-poster="1"' : "";
-		return `<div class="field"><label>${esc(label)}</label><div class="shot-row"><div class="shot"${poster} data-shot="${key}"></div><div class="shot-fields"><input data-key="${key}" value="${esc(value ?? "")}"><input data-file="${key}" type="file" accept="image/*" hidden><button class="btn" type="button" data-pick="${key}" data-folder="${esc(field[3] || "")}">选择图片</button></div></div></div>`;
+		// 按钮放进一行 toolbar：.shot-fields 是竖排 flex，按钮直接放会撑满整行宽度。
+		return `<div class="field"${span}><label>${esc(label)}</label><div class="shot-row"><div class="shot"${poster} data-shot="${key}"></div><div class="shot-fields"><input data-key="${key}" value="${esc(value ?? "")}"><div class="toolbar"><button class="btn" type="button" data-pick="${key}" data-folder="${esc(field[3] || "")}">选择图片</button></div><input data-file="${key}" type="file" accept="image/*" hidden></div></div></div>`;
 	}
-	return `<div class="field"><label>${esc(label)}</label><input data-key="${key}" type="${type === "number" ? "number" : "text"}" value="${esc(value ?? "")}"></div>`;
+	if (type === "tags") {
+		return `<div class="field"${span}><label>${esc(label)}（回车或逗号确认）</label><div class="tags-box" data-tags="${key}"><input placeholder="回车确认"></div></div>`;
+	}
+	return `<div class="field"${span}><label>${esc(label)}</label><input data-key="${key}" type="${type === "number" ? "number" : "text"}" value="${esc(value ?? "")}"></div>`;
+}
+
+// 编辑表单按 LISTS 里的 groups 渲染：每组一个 .fgroup（标题 + 12 栏网格）。
+// spec 可以是 LISTS[id]，也可以是就地拼的 { fields, groups }（日记 / 追番）。
+// 没写进任何分组的字段兜到「其他」，所以漏配不会把字段弄丢。
+function groupedFieldsHtml(spec, item) {
+	const used = new Set();
+	const block = (title, fields) => {
+		const inner = fields.map((field) => fieldHtml(field, item[field[0]])).join("");
+		return `<section class="fgroup"><h3 class="panel-title">${esc(title)}</h3><div class="field-grid">${inner}</div></section>`;
+	};
+	const blocks = (spec.groups || []).map(([title, keys]) => {
+		const fields = spec.fields.filter(([key]) => keys.includes(key));
+		fields.forEach(([key]) => used.add(key));
+		return fields.length ? block(title, fields) : "";
+	});
+	const rest = spec.fields.filter(([key]) => !used.has(key));
+	if (rest.length) blocks.push(block("其他", rest));
+	return blocks.filter(Boolean).join("");
 }
 
 async function renderDiary(panel) {
@@ -841,12 +1112,19 @@ async function renderDiary(panel) {
 		type: "button",
 	});
 	const body = pageHead(panel, "日记", "保存到 diary.yml。没在表单里的字段会留着。", button);
+	const groups = [
+		["正文", ["content"]],
+		["时间与心情", ["date", "mood", "location", "id"]],
+		["图片", ["images"]],
+		["标签", ["tags"]],
+	];
 	const save = async () => {
 		await api("/api/admin/content/boards/diary", { method: "PUT", body: { data: { ...file.data, items: originals } } });
 		toast("日记已保存");
 	};
 	const draw = () => {
 		if (editing < 0) {
+			setBack(null);
 			body.innerHTML = `<div class="mini-grid">${items
 				.map(
 					(item, index) => `<div class="mini">
@@ -879,7 +1157,7 @@ async function renderDiary(panel) {
 			return;
 		}
 		const item = items[editing] || {};
-		body.innerHTML = `<form class="card" id="one">${fields.map((field) => fieldHtml(field, item[field[0]])).join("")}<div class="toolbar"><button class="btn primary" type="submit">保存</button><button class="btn" type="button" id="cancel">返回</button></div></form>`;
+		body.innerHTML = `<form class="panel edit-form" id="one"><div class="panel-head"><strong>#${editing + 1} ${esc(String(item.content || "").slice(0, 24) || "新日记")}</strong><span class="muted">diary.yml</span></div>${groupedFieldsHtml({ fields, groups }, item)}${formFooter("保存后立刻写入 diary.yml", "cancel")}</form>`;
 		const form = body.querySelector("#one");
 		const images = Array.isArray(item.images) ? [...item.images] : [];
 		const zone = form.querySelector("[data-images]");
@@ -908,11 +1186,14 @@ async function renderDiary(panel) {
 		zone.querySelector("[data-drop]").onclick = () => zone.querySelector("[data-file]").click();
 		zone.querySelector("[data-file]").onchange = (event) => addImages([...event.target.files]);
 		bindDrop(zone.querySelector("[data-drop]"), (picked) => addImages([picked]));
-		form.querySelector("#cancel").onclick = () => {
+		bindTagsFields(form, fields, item);
+		const back = () => {
 			state.dirty = false;
 			editing = -1;
 			draw();
 		};
+		setBack(back);
+		form.querySelector("#cancel").onclick = back;
 		markDirty(form);
 		form.onsubmit = async (event) => {
 			event.preventDefault();
@@ -963,9 +1244,16 @@ async function renderAnime(panel) {
 		textContent: "添加",
 		type: "button",
 	});
+	const groups = [
+		["基本信息", ["title", "status", "rating", "year", "studio"]],
+		["封面与简介", ["cover", "description"]],
+		["分类与链接", ["genre", "link"]],
+		["进度与时间", ["progress", "totalEpisodes", "episodes", "startDate", "endDate"]],
+	];
 	const body = pageHead(panel, "追番", "保存到 anime.yml。可以从 B 站链接填入。", button);
 	const draw = () => {
 		if (editing < 0) {
+			setBack(null);
 			const statusText = (value) => ANIME_STATUS.find(([key]) => key === value)?.[1] || value || "";
 			body.innerHTML = `<div class="mini-grid">${items
 				.map(
@@ -999,15 +1287,27 @@ async function renderAnime(panel) {
 			return;
 		}
 		const item = items[editing] || {};
-		body.innerHTML = `<form class="card" id="one"><div class="row"><div class="field"><label>B 站链接或 media id</label><input id="bili"></div><div class="field"><label>&nbsp;</label><button class="btn" id="fill" type="button">抓取并填入</button></div></div>${fields.map((field) => fieldHtml(field, item[field[0]])).join("")}<div class="toolbar"><button class="btn primary" type="submit">保存</button><button class="btn" type="button" id="cancel">返回</button></div></form>`;
+		body.innerHTML = `<form class="panel edit-form" id="one"><div class="panel-head"><strong>#${editing + 1} ${esc(item.title || "新番剧")}</strong><span class="muted">anime.yml</span></div>
+			<section class="fgroup"><h3 class="panel-title">从 B 站填入</h3><div class="field-grid">
+				<div class="field" style="--span:8"><label>B 站链接或 media id</label><input id="bili"></div>
+				<div class="field" style="--span:4"><label>&nbsp;</label><button class="btn" id="fill" type="button">抓取并填入</button></div>
+			</div></section>
+			${groupedFieldsHtml({ fields, groups }, item)}${formFooter("保存后立刻写入 anime.yml", "cancel")}</form>`;
 		const form = body.querySelector("#one");
 		bindImageFields(form);
+		bindTagsFields(form, fields, item);
 		form.querySelector("#fill").onclick = async () => {
 			const fill = form.querySelector("#fill");
 			try {
 				await withButton(fill, async () => {
 					const filled = await api("/api/admin/bilibili", { method: "POST", body: { url: form.querySelector("#bili").value } });
 					Object.entries(presentItem(filled)).forEach(([key, value]) => {
+						// 类型是胶囊输入的字段没有 [data-key] 输入框，整份换掉再重画
+						const box = form.__tagBoxes?.[key];
+						if (box) {
+							box.set(Array.isArray(value) ? value : splitList(value ?? ""));
+							return;
+						}
 						const node = form.querySelector(`[data-key="${key}"]`);
 						if (node) {
 							node.value = Array.isArray(value) ? value.join(", ") : value ?? "";
@@ -1026,6 +1326,11 @@ async function renderAnime(panel) {
 			editing = -1;
 			draw();
 		};
+		setBack(() => {
+			state.dirty = false;
+			editing = -1;
+			draw();
+		});
 		markDirty(form);
 		form.onsubmit = async (event) => {
 			event.preventDefault();
@@ -1171,6 +1476,7 @@ async function renderList(panel, id) {
 	};
 	const draw = () => {
 		if (editing < 0) {
+			setBack(null);
 			body.innerHTML = `<div class="mini-grid">${items.map(mini).join("")}</div>${items.length ? "" : `<p class="muted">还没有条目</p>`}`;
 			body.querySelectorAll("[data-edit]").forEach((node) => {
 				node.onclick = () => {
@@ -1192,21 +1498,24 @@ async function renderList(panel, id) {
 		}
 		const item = items[editing] || {};
 		const card = document.createElement("form");
-		card.className = "card item";
+		card.className = "panel edit-form";
 		card.innerHTML =
-			`<div class="page-head"><strong>#${editing + 1} ${esc(item.title || item.name || "")}</strong></div>` +
-			spec.fields.map((field) => fieldHtml(field, item[field[0]])).join("") +
-			`<div class="toolbar"><button class="btn primary" type="submit">保存</button><button class="btn" type="button" id="cancel">返回</button></div>`;
+			`<div class="panel-head"><strong>#${editing + 1} ${esc(item.title || item.name || "新建")}</strong><span class="muted">${esc(file.file)}</span></div>` +
+			groupedFieldsHtml(spec, item) +
+			formFooter("保存后立刻写入 " + file.file, "cancel");
 		card.addEventListener("input", () => {
 			state.dirty = true;
 		});
 		bindColors(card);
 		bindImageFields(card);
-		card.querySelector("#cancel").onclick = () => {
+		bindTagsFields(card, spec.fields, item);
+		const back = () => {
 			state.dirty = false;
 			editing = -1;
 			draw();
 		};
+		setBack(back);
+		card.querySelector("#cancel").onclick = back;
 		card.onsubmit = async (event) => {
 			event.preventDefault();
 			const next = commitItem(originals[editing] || {}, readCard(card, spec.fields, item), spec.fields);
@@ -1232,7 +1541,12 @@ async function renderList(panel, id) {
 async function renderAbout(panel) {
 	const data = await api("/api/admin/content/about");
 	const body = pageHead(panel, "关于我", "写入 src/content/spec/about.md，只保存正文。");
-	body.innerHTML = `<form class="card" id="form"><textarea name="body" style="min-height:320px">${esc(data.body || "")}</textarea><div class="toolbar"><button class="btn primary" type="submit">保存</button></div></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		<section class="fgroup"><h3 class="panel-title">正文</h3>
+			<textarea name="body" style="min-height:320px">${esc(data.body || "")}</textarea>
+			<p class="hint">写入 src/content/spec/about.md，只保存正文。</p>
+		</section>
+		${formFooter("写入 src/content/spec/about.md，只保存正文")}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1258,14 +1572,31 @@ async function renderProfile(panel) {
 	const file = await api("/api/admin/content/boards/profile");
 	const data = file.data || {};
 	const body = pageHead(panel, "个人资料", file.file);
-	body.innerHTML = `<form class="card" id="form">
-		<div class="row"><div class="field"><label>名字</label><input name="name" value="${esc(data.name || "")}"></div><div class="field"><label>头像</label><div class="shot-row"><div class="shot" data-shot="avatar"></div><div class="shot-fields"><input name="avatar" data-key="avatar" value="${esc(data.avatar || "")}"><input id="file" type="file" accept="image/*" hidden></div></div></div></div>
-		<div class="field"><label>简介</label><textarea name="bio">${esc(data.bio || "")}</textarea></div>
-		<label class="switch"><input name="tw" type="checkbox" ${data.typewriter?.enable !== false ? "checked" : ""}> 打字机</label>
-		<div class="field"><label>速度</label><input name="speed" type="number" value="${Number(data.typewriter?.speed || 80)}"></div>
-		<div class="field"><label>链接，每行：名称 | 图标 | 网址</label><textarea name="links">${esc((data.links || []).map((link) => [link.name, link.icon, link.url].join(" | ")).join("\n"))}</textarea></div>
-		<button class="btn primary" type="submit">保存</button></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		${fGroup(
+			"基本资料",
+			fFld(7, "名字", `<input name="name" value="${esc(data.name || "")}">`) +
+				fFld(
+					5,
+					"头像",
+					`<div class="shot-row"><div class="shot" data-shot="avatar"></div><div class="shot-fields"><input name="avatar" data-key="avatar" value="${esc(data.avatar || "")}"><div class="toolbar"><button class="btn" type="button" id="pick-avatar">选择图片</button></div><input id="file" type="file" accept="image/*" hidden></div></div>`,
+				) +
+				fFld(12, "简介", `<textarea name="bio">${esc(data.bio || "")}</textarea>`),
+		)}
+		${fGroup(
+			"打字机",
+			fSw(4, "打字机", `<input name="tw" type="checkbox" ${data.typewriter?.enable !== false ? "checked" : ""}>`) +
+				fFld(4, "速度（毫秒/字）", `<input name="speed" type="number" value="${Number(data.typewriter?.speed || 80)}">`),
+		)}
+		<section class="fgroup">
+			<h3 class="panel-title">社交链接</h3>
+			<p class="hint lead">前台按这里的顺序显示。图标用 Iconify 名称，下拉里没有的选「自定义」手填。</p>
+			<div id="links"></div>
+			<div class="toolbar"><button class="btn" id="add-link" type="button">＋ 添加链接</button></div>
+		</section>
+		${formFooter("保存后立刻写入 " + file.file)}</form>`;
 	bindImagePreview(body.querySelector("#form"));
+	body.querySelector("#pick-avatar").onclick = () => body.querySelector("#file").click();
 	body.querySelector("#file").onchange = async (event) => {
 		try {
 			const input = body.querySelector("[name=avatar]");
@@ -1277,6 +1608,92 @@ async function renderProfile(panel) {
 			toast(error.message, "err");
 		}
 	};
+
+	// 社交链接：每条一张卡片，名称 / 图标下拉 / 网址，可上移下移删除。
+	// 顺序即前台显示顺序，所以上下移、增删都记为未保存修改。
+	const links = (Array.isArray(data.links) ? data.links : []).map((link) => ({
+		name: String(link?.name ?? ""),
+		icon: String(link?.icon ?? ""),
+		url: String(link?.url ?? ""),
+	}));
+	const linkBox = body.querySelector("#links");
+	const drawLinks = () => {
+		if (!links.length) {
+			linkBox.innerHTML = `<p class="muted" style="font-size:0.85rem;margin:0 0 10px">还没有社交链接。</p>`;
+			return;
+		}
+		linkBox.innerHTML = links
+			.map((link, index) => {
+				const preset = LINK_ICONS.some(([value]) => value === link.icon);
+				const options = LINK_ICONS.map(([value, label]) => `<option value="${esc(value)}"${link.icon === value ? " selected" : ""}>${esc(label)}</option>`).join("");
+				return `<div class="link-card" data-i="${index}">
+					<div class="link-card-head">
+						<strong>#${index + 1} ${esc(link.name || "未命名")}</strong>
+						<div class="toolbar">
+							<button class="btn" type="button" data-move="-1"${index === 0 ? " disabled" : ""}>上移</button>
+							<button class="btn" type="button" data-move="1"${index === links.length - 1 ? " disabled" : ""}>下移</button>
+							<button class="btn danger" type="button" data-del>删除</button>
+						</div>
+					</div>
+					<div class="field-grid">
+						<div class="field" style="--span:4"><label>名称</label><input data-k="name" value="${esc(link.name)}" placeholder="GitHub"></div>
+						<div class="field" style="--span:4"><label>图标</label><select data-k="icon-preset">${options}<option value="${CUSTOM_ICON}"${preset ? "" : " selected"}>自定义…</option></select></div>
+						<div class="field" style="--span:4"><label>网址</label><input data-k="url" value="${esc(link.url)}" placeholder="https://"></div>
+						<div class="field" style="--span:12" data-custom${preset ? " hidden" : ""}><label>图标名称（Iconify）</label><input data-k="icon" value="${esc(link.icon)}" placeholder="fa7-brands:github"></div>
+					</div>
+				</div>`;
+			})
+			.join("");
+		linkBox.querySelectorAll(".link-card").forEach((card) => {
+			const index = Number(card.dataset.i);
+			card.querySelectorAll("input[data-k]").forEach((input) => {
+				input.addEventListener("input", () => {
+					links[index][input.dataset.k] = input.value;
+					if (input.dataset.k === "name") {
+						const title = card.querySelector("strong");
+						if (title) title.textContent = `#${index + 1} ${input.value.trim() || "未命名"}`;
+					}
+					state.dirty = true;
+				});
+			});
+			const select = card.querySelector('[data-k="icon-preset"]');
+			const custom = card.querySelector("[data-custom]");
+			const iconInput = card.querySelector('input[data-k="icon"]');
+			select.addEventListener("change", () => {
+				state.dirty = true;
+				if (select.value === CUSTOM_ICON) {
+					custom.hidden = false;
+					iconInput.focus();
+					return;
+				}
+				links[index].icon = select.value;
+				iconInput.value = select.value;
+				custom.hidden = true;
+			});
+			card.querySelectorAll("[data-move]").forEach((button) => {
+				button.onclick = () => {
+					const to = index + Number(button.dataset.move);
+					if (to < 0 || to >= links.length) return;
+					[links[index], links[to]] = [links[to], links[index]];
+					state.dirty = true;
+					drawLinks();
+				};
+			});
+			card.querySelector("[data-del]").onclick = async () => {
+				if (!(await confirmBox("删除这条链接", links[index].name || links[index].url || "未命名"))) return;
+				links.splice(index, 1);
+				state.dirty = true;
+				drawLinks();
+			};
+		});
+	};
+	drawLinks();
+	body.querySelector("#add-link").onclick = () => {
+		links.push({ name: "", icon: DEFAULT_ICON, url: "https://" });
+		state.dirty = true;
+		drawLinks();
+	};
+
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1290,10 +1707,13 @@ async function renderProfile(panel) {
 					bio: input.get("bio"),
 					avatar: input.get("avatar"),
 					typewriter: { ...(data.typewriter || {}), enable: input.get("tw") === "on", speed: Number(input.get("speed") || 80) },
-					links: lines(input.get("links")).map((line) => {
-						const [name, icon, url] = line.split("|").map((part) => part.trim());
-						return { name, icon, url };
-					}),
+					links: links
+						.map((link) => ({
+							name: link.name.trim(),
+							icon: link.icon.trim() || DEFAULT_ICON,
+							url: link.url.trim(),
+						}))
+						.filter((link) => link.name || link.url),
 				}),
 			);
 		} catch (error) {
@@ -1307,15 +1727,27 @@ async function renderAnnouncement(panel) {
 	const data = file.data || {};
 	const link = data.link || {};
 	const body = pageHead(panel, "公告", file.file);
-	body.innerHTML = `<form class="card" id="form">
-		<label class="switch"><input name="enable" type="checkbox" ${data.enable ? "checked" : ""}> 显示</label>
-		<div class="field"><label>标题</label><input name="title" value="${esc(data.title || "")}"></div>
-		<div class="field"><label>内容</label><textarea name="content">${esc(data.content || "")}</textarea></div>
-		<label class="switch"><input name="closable" type="checkbox" ${data.closable ? "checked" : ""}> 可关闭</label>
-		<label class="switch"><input name="linkEnable" type="checkbox" ${link.enable ? "checked" : ""}> 链接</label>
-		<div class="row"><div class="field"><label>文字</label><input name="text" value="${esc(link.text || "")}"></div><div class="field"><label>地址</label><input name="url" value="${esc(link.url || "")}"></div></div>
-		<label class="switch"><input name="external" type="checkbox" ${link.external ? "checked" : ""}> 外部链接</label>
-		<button class="btn primary" type="submit">保存</button></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		${fGroup(
+			"显示",
+			fSwRow(
+				fSw(0, "显示公告", `<input name="enable" type="checkbox" ${data.enable ? "checked" : ""}>`) +
+					fSw(0, "可关闭", `<input name="closable" type="checkbox" ${data.closable ? "checked" : ""}>`),
+			),
+		)}
+		${fGroup(
+			"内容",
+			fFld(12, "标题", `<input name="title" value="${esc(data.title || "")}">`) +
+				fFld(12, "内容", `<textarea name="content">${esc(data.content || "")}</textarea>`),
+		)}
+		${fGroup(
+			"链接",
+			fSwRow(fSw(0, "显示链接", `<input name="linkEnable" type="checkbox" ${link.enable ? "checked" : ""}>`)) +
+				fFld(6, "文字", `<input name="text" value="${esc(link.text || "")}">`) +
+				fFld(6, "地址", `<input name="url" value="${esc(link.url || "")}">`) +
+				fSwRow(fSw(0, "外部链接", `<input name="external" type="checkbox" ${link.external ? "checked" : ""}>`)),
+		)}
+		${formFooter("保存后立刻写入 " + file.file)}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1350,20 +1782,42 @@ async function renderBanner(panel) {
 	const desktop = Array.isArray(data.desktop) ? [...data.desktop] : [];
 	const mobile = Array.isArray(data.mobile) ? [...data.mobile] : [];
 	const body = pageHead(panel, "横幅", file.file);
+	// 每张横幅一行紧凑卡（缩略图 + 地址 + 上传/删除），不再一张图占一个 .card。
+	const rows = (name, arr, addId) =>
+		`<section class="fgroup"><h3 class="panel-title">${esc(name)} 横幅</h3>
+			${
+				arr.length
+					? `<div class="field-grid">${arr
+							.map(
+								(url, index) =>
+									`<div class="banner-item">
+										<div class="shot" data-shot="${name[0]}${index}"></div>
+										<input data-${esc(name)}="${index}" data-key="${name[0]}${index}" value="${esc(url)}">
+										<button class="btn" type="button" data-up="${esc(name)}:${index}">上传替换</button>
+										<button class="btn danger" type="button" data-rm="${esc(name)}:${index}">删除</button>
+									</div>`,
+							)
+							.join("")}</div>`
+					: `<p class="hint lead">还没有图，点下面按钮添加。</p>`
+			}
+			<div class="toolbar"><button class="btn" id="${addId}" type="button">＋ 添加一张</button></div>
+		</section>`;
 	const draw = () => {
-		const list = (name, arr) =>
-			arr
-				.map(
-					(url, index) =>
-						`<div class="card"><div class="shot-row"><div class="shot" data-shot="${name[0]}${index}"></div><div class="shot-fields"><input data-${name}="${index}" data-key="${name[0]}${index}" value="${esc(url)}"><div class="toolbar"><button class="btn" type="button" data-up="${name}:${index}">上传替换</button><button class="btn danger" type="button" data-rm="${name}:${index}">删除</button></div></div></div></div>`,
-				)
-				.join("");
-		body.innerHTML = `<h3>桌面</h3>${list("desktop", desktop)}<button class="btn" id="add-d" type="button">添加</button><h3>移动</h3>${list("mobile", mobile)}<button class="btn" id="add-m" type="button">添加</button>
-			<div class="card"><label class="switch"><input id="car" type="checkbox" ${data.carousel?.enable !== false ? "checked" : ""}> 轮播</label>
-			<div class="field"><label>间隔秒</label><input id="interval" type="number" value="${Number(data.carousel?.interval || 3)}"></div>
-			<div class="field"><label>主标题</label><input id="title" value="${esc(data.homeText?.title || "")}"></div>
-			<div class="field"><label>副标题，每行一句</label><textarea id="sub">${esc((data.homeText?.subtitle || []).map((item) => (typeof item === "string" ? item : item?.line || "")).join("\n"))}</textarea></div>
-			<button class="btn primary" id="save" type="button">保存</button></div><input id="file" type="file" accept="image/*" hidden>`;
+		body.innerHTML = `<div class="panel edit-form">
+			${rows("desktop", desktop, "add-d")}
+			${rows("mobile", mobile, "add-m")}
+			${fGroup(
+				"轮播",
+				fSwRow(fSw(0, "启用轮播", `<input id="car" type="checkbox" ${data.carousel?.enable !== false ? "checked" : ""}>`)) +
+					fFld(3, "间隔（秒）", `<input id="interval" type="number" value="${Number(data.carousel?.interval || 3)}">`),
+			)}
+			${fGroup(
+				"首页文案",
+				fFld(12, "主标题", `<input id="title" value="${esc(data.homeText?.title || "")}">`) +
+					`<div class="field" style="--span:12"><label>副标题，每行一句</label><textarea id="sub">${esc((data.homeText?.subtitle || []).map((item) => (typeof item === "string" ? item : item?.line || "")).join("\n"))}</textarea></div>`,
+			)}
+			<div class="savebar"><button class="btn primary" id="save" type="button">保存</button><span class="spacer"></span><span class="muted">保存后立刻写入 ${esc(file.file)}</span></div>
+		</div><input id="file" type="file" accept="image/*" hidden>`;
 		bindImagePreview(body);
 		body.querySelectorAll("[data-rm]").forEach((node) => {
 			node.onclick = async () => {
@@ -1439,14 +1893,27 @@ async function renderMusic(panel) {
 	const file = await api("/api/admin/content/boards/music");
 	const data = file.data || {};
 	const body = pageHead(panel, "音乐", file.file);
-	body.innerHTML = `<form class="card" id="form">
-		<label class="switch"><input name="enable" type="checkbox" ${data.enable ? "checked" : ""}> 启用</label>
-		<label class="switch"><input name="float" type="checkbox" ${data.showFloatingPlayer ? "checked" : ""}> 悬浮播放器</label>
-		<div class="field"><label>入口</label><select name="floatingEntryMode">${selectOptions([["default", "默认"], ["fab", "悬浮按钮"]], data.floatingEntryMode || "")}</select></div>
-		<div class="field"><label>模式</label><select name="mode">${selectOptions([["local", "本地"], ["meting", "Meting"]], data.mode || "")}</select></div>
-		<div class="field"><label>Meting API</label><input name="meting_api" value="${esc(data.meting_api || "")}"></div>
-		<div class="row"><div class="field"><label>歌单 ID</label><input name="id" value="${esc(data.id || "")}"></div><div class="field"><label>服务</label><select name="server">${selectOptions([["netease", "网易云"], ["tencent", "QQ 音乐"], ["kugou", "酷狗"], ["xiami", "虾米"], ["baidu", "百度"]], data.server || "")}</select></div><div class="field"><label>类型</label><select name="type">${selectOptions([["playlist", "歌单"], ["song", "单曲"], ["album", "专辑"], ["artist", "歌手"], ["search", "搜索"]], data.type || "")}</select></div></div>
-		<button class="btn primary" type="submit">保存</button></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		${fGroup(
+			"开关",
+			fSwRow(
+				fSw(0, "启用播放器", `<input name="enable" type="checkbox" ${data.enable ? "checked" : ""}>`) +
+					fSw(0, "悬浮播放器", `<input name="float" type="checkbox" ${data.showFloatingPlayer ? "checked" : ""}>`),
+			),
+		)}
+		${fGroup(
+			"入口与模式",
+			fFld(4, "入口", `<select name="floatingEntryMode">${selectOptions([["default", "默认"], ["fab", "悬浮按钮"]], data.floatingEntryMode || "")}</select>`) +
+				fFld(4, "模式", `<select name="mode">${selectOptions([["local", "本地"], ["meting", "Meting"]], data.mode || "")}</select>`),
+		)}
+		${fGroup(
+			"数据源",
+			fFld(12, "Meting API", `<input name="meting_api" value="${esc(data.meting_api || "")}">`) +
+				fFld(4, "歌单 ID", `<input name="id" value="${esc(data.id || "")}">`) +
+				fFld(4, "服务", `<select name="server">${selectOptions([["netease", "网易云"], ["tencent", "QQ 音乐"], ["kugou", "酷狗"], ["xiami", "虾米"], ["baidu", "百度"]], data.server || "")}</select>`) +
+				fFld(4, "类型", `<select name="type">${selectOptions([["playlist", "歌单"], ["song", "单曲"], ["album", "专辑"], ["artist", "歌手"], ["search", "搜索"]], data.type || "")}</select>`),
+		)}
+		${formFooter("保存后立刻写入 " + file.file)}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1477,18 +1944,32 @@ async function renderPio(panel) {
 	const data = file.data || {};
 	const dialog = data.dialog || {};
 	const body = pageHead(panel, "看板娘", file.file);
-	body.innerHTML = `<form class="card" id="form">
-		<label class="switch"><input name="enable" type="checkbox" ${data.enable ? "checked" : ""}> 启用</label>
-		<div class="row"><div class="field"><label>位置</label><select name="position">${selectOptions([["left", "左侧"], ["right", "右侧"]], data.position || "")}</select></div><div class="field"><label>模式</label><select name="mode">${selectOptions([["static", "静止"], ["fixed", "固定"], ["draggable", "可拖动"]], data.mode || "")}</select></div><div class="field"><label>宽</label><input name="width" type="number" value="${Number(data.width || 280)}"></div><div class="field"><label>高</label><input name="height" type="number" value="${Number(data.height || 250)}"></div></div>
-		<label class="switch"><input name="hiddenOnMobile" type="checkbox" ${data.hiddenOnMobile ? "checked" : ""}> 移动端隐藏</label>
-		<div class="field"><label>模型，每行一个</label><textarea name="models">${esc((data.models || []).join("\n"))}</textarea></div>
-		<div class="field"><label>欢迎</label><input name="welcome" value="${esc(dialog.welcome || "")}"></div>
-		<div class="field"><label>首页</label><input name="home" value="${esc(dialog.home || "")}"></div>
-		<div class="field"><label>关闭</label><input name="close" value="${esc(dialog.close || "")}"></div>
-		<div class="field"><label>链接</label><input name="link" value="${esc(dialog.link || "")}"></div>
-		<div class="field"><label>点击台词</label><textarea name="touch">${esc((dialog.touch || []).join("\n"))}</textarea></div>
-		<div class="field"><label>换装台词</label><textarea name="skin">${esc((dialog.skin || []).join("\n"))}</textarea></div>
-		<button class="btn primary" type="submit">保存</button></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		${fGroup(
+			"开关",
+			fSwRow(
+				fSw(0, "启用看板娘", `<input name="enable" type="checkbox" ${data.enable ? "checked" : ""}>`) +
+					fSw(0, "移动端隐藏", `<input name="hiddenOnMobile" type="checkbox" ${data.hiddenOnMobile ? "checked" : ""}>`),
+			),
+		)}
+		${fGroup(
+			"位置与尺寸",
+			fFld(3, "位置", `<select name="position">${selectOptions([["left", "左侧"], ["right", "右侧"]], data.position || "")}</select>`) +
+				fFld(3, "模式", `<select name="mode">${selectOptions([["static", "静止"], ["fixed", "固定"], ["draggable", "可拖动"]], data.mode || "")}</select>`) +
+				fFld(3, "宽（px）", `<input name="width" type="number" value="${Number(data.width || 280)}">`) +
+				fFld(3, "高（px）", `<input name="height" type="number" value="${Number(data.height || 250)}">`),
+		)}
+		${fGroup("模型", fFld(12, "模型，每行一个", `<textarea name="models">${esc((data.models || []).join("\n"))}</textarea>`))}
+		${fGroup(
+			"台词",
+			fFld(6, "欢迎", `<input name="welcome" value="${esc(dialog.welcome || "")}">`) +
+				fFld(6, "首页", `<input name="home" value="${esc(dialog.home || "")}">`) +
+				fFld(6, "关闭", `<input name="close" value="${esc(dialog.close || "")}">`) +
+				fFld(6, "链接", `<input name="link" value="${esc(dialog.link || "")}">`) +
+				fFld(12, "点击台词，每行一句", `<textarea name="touch">${esc((dialog.touch || []).join("\n"))}</textarea>`) +
+				fFld(12, "换装台词，每行一句", `<textarea name="skin">${esc((dialog.skin || []).join("\n"))}</textarea>`),
+		)}
+		${formFooter("保存后立刻写入 " + file.file)}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1526,8 +2007,17 @@ async function renderFeatures(panel) {
 	const file = await api("/api/admin/content/boards/features");
 	const data = file.data || {};
 	const keys = Object.keys(data);
-	const body = pageHead(panel, "模块开关", file.file);
-	body.innerHTML = `<form class="card" id="form">${keys.map((key) => `<label class="switch"><input name="${esc(key)}" type="checkbox" ${data[key] ? "checked" : ""}> ${esc(key)}</label>`).join("")}<button class="btn primary" type="submit">保存</button></form>`;
+	const body = pageHead(panel, "模块开关", file.file + "。只改已有的键，勾掉后前台不显示对应板块。");
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		<section class="fgroup"><h3 class="panel-title">前台板块</h3>
+			<div class="features-grid">${keys
+				.map((key) => {
+					const label = FEATURE_LABELS[key];
+					return `<label class="switch"><input name="${esc(key)}" type="checkbox" ${data[key] ? "checked" : ""}> <span>${esc(label || key)}${label ? `<span class="badge">${esc(key)}</span>` : ""}</span></label>`;
+				})
+				.join("")}</div>
+		</section>
+		${formFooter("保存后立刻写入 " + file.file)}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1549,7 +2039,12 @@ async function renderDevices(panel) {
 	const file = await api("/api/admin/content/boards/devices");
 	const data = file.data || {};
 	const body = pageHead(panel, "设备", "分类仍是 JSON，避免丢掉未展示字段。");
-	body.innerHTML = `<form class="card" id="form"><textarea name="categories" style="min-height:280px">${esc(JSON.stringify(data.categories || [], null, 2))}</textarea><button class="btn primary" type="submit">保存</button></form>`;
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		<section class="fgroup"><h3 class="panel-title">分类 JSON</h3>
+			<textarea name="categories" style="min-height:280px">${esc(JSON.stringify(data.categories || [], null, 2))}</textarea>
+			<p class="hint">整块 JSON 直接写回，避免漏掉没展示的字段。</p>
+		</section>
+		${formFooter("整块 JSON 直接写回，避免漏掉没展示的字段")}</form>`;
 	const form = body.querySelector("#form");
 	markDirty(form);
 	form.onsubmit = async (event) => {
@@ -1596,29 +2091,36 @@ async function renderAlbums(panel) {
 		const albums = data.albums || [];
 		let html = "";
 		if (creating) {
-			html += `<form class="card" id="create"><h3 class="sec-title">新建相册</h3>
-				<div class="row"><div class="field"><label>文件夹名</label><input name="id" required></div><div class="field"><label>标题</label><input name="title"></div></div>
-				<div class="toolbar"><button class="btn primary" type="submit">创建</button><button class="btn" type="button" id="cancel-create">收起</button></div></form>`;
+			html += `<form class="panel edit-form" id="create">
+				<section class="fgroup"><h3 class="panel-title">新建相册</h3>
+					<div class="field-grid">
+						<div class="field" style="--span:4"><label>文件夹名</label><input name="id" required></div>
+						<div class="field" style="--span:8"><label>标题</label><input name="title"></div>
+					</div>
+					<div class="toolbar"><button class="btn primary" type="submit">创建</button><button class="btn" type="button" id="cancel-create">收起</button></div>
+				</section>
+			</form>`;
 		}
 		const album = albums.find((item) => item.id === editing);
 		if (editing && album) {
 			const info = album.info || {};
-			html += `<form class="card" id="edit">
-				<h3 class="sec-title">相册信息 · ${esc(album.id)}</h3>
-				<div class="row">
-					<div class="field" style="flex:2"><label>标题</label><input name="title" value="${esc(info.title || "")}"></div>
-					<div class="field"><label>日期</label><input name="date" type="date" value="${esc(String(info.date || "").slice(0, 10))}"></div>
-					<div class="field"><label>地点</label><input name="location" value="${esc(info.location || "")}"></div>
-				</div>
-				<div class="row">
-					<div class="field"><label>排版</label><select name="layout">${selectOptions([["grid", "网格"]], info.layout || "grid")}</select></div>
-					<div class="field"><label>标签</label><input name="tags" value="${esc((info.tags || []).join(", "))}"></div>
-				</div>
-				<div class="field"><label>简介</label><textarea name="description">${esc(info.description || "")}</textarea></div>
-				<label class="switch"><input type="checkbox" name="hidden" ${info.hidden ? "checked" : ""}> 隐藏（前台不显示这个相册）</label>
-				<h3 class="sec-title sub">照片（${(album.photos || []).length}）</h3>
-				<div class="thumbs">${(album.photos || []).map((photo) => `<figure><img src="${esc(img(photo.url))}" alt="" referrerpolicy="no-referrer"><button class="btn danger" type="button" data-photo="${esc(photo.name)}">删除</button></figure>`).join("")}</div>
-				<div class="drop">拖拽或点击添加照片<input type="file" accept="image/*" multiple hidden data-file></div>
+			html += `<form class="panel edit-form" id="edit">
+				<div class="panel-head"><strong>#${esc(album.id)}</strong><span class="muted">${(album.photos || []).length} 张照片</span></div>
+				${fGroup(
+					"相册信息",
+					fFld(6, "标题", `<input name="title" value="${esc(info.title || "")}">`) +
+						fFld(3, "日期", `<input name="date" type="date" value="${esc(String(info.date || "").slice(0, 10))}">`) +
+						fFld(3, "地点", `<input name="location" value="${esc(info.location || "")}">`) +
+						fFld(4, "排版", `<select name="layout">${selectOptions([["grid", "网格"]], info.layout || "grid")}</select>`) +
+						`<div class="field" style="--span:8"><label>标签（回车或逗号确认）</label><div class="tags-box"><input placeholder="回车确认"></div></div>` +
+						fFld(12, "简介", `<textarea name="description">${esc(info.description || "")}</textarea>`) +
+						fSw(12, "隐藏（前台不显示这个相册）", `<input type="checkbox" name="hidden" ${info.hidden ? "checked" : ""}>`),
+				)}
+				${fGroup("封面", `<div class="cover-pick" id="coverbox">${coverPickHtml(album)}</div>`)}
+				<section class="fgroup"><h3 class="panel-title">照片（${(album.photos || []).length}）</h3>
+					<div class="thumbs photo-grid">${(album.photos || []).map((photo) => photoFigureHtml(photo, album.cover)).join("")}</div>
+					<div class="drop">拖拽或点击添加照片<input type="file" accept="image/*" multiple hidden data-file></div>
+				</section>
 				<div class="savebar">
 					<button class="btn primary" type="submit">保存</button>
 					<button class="btn" type="button" id="back">取消</button>
@@ -1675,8 +2177,11 @@ async function renderAlbums(panel) {
 			};
 			card.querySelector("[data-file]").onchange = (event) => send([...event.target.files]);
 			bindDrop(drop, (picked) => send([picked]));
+			const tags = [...(Array.isArray(album.info?.tags) ? album.info.tags : [])];
+			const tagBox = bindTagBox(card.querySelector(".tags-box"), tags);
 			card.onsubmit = async (event) => {
 				event.preventDefault();
+				tagBox.commit();
 				const input = new FormData(card);
 				try {
 					await withButton(card.querySelector("[type=submit]"), () =>
@@ -1688,7 +2193,7 @@ async function renderAlbums(panel) {
 									description: input.get("description"),
 									date: input.get("date"),
 									location: input.get("location"),
-									tags: splitList(input.get("tags")),
+									tags,
 									layout: input.get("layout") || album.info?.layout || "grid",
 									columns: Number(album.info?.columns || 3),
 									hidden: input.get("hidden") === "on",
@@ -1714,6 +2219,25 @@ async function renderAlbums(panel) {
 					draw();
 				};
 			});
+			// 设为封面 / 恢复默认：只写 info.json 的 cover 字段，然后就地重画封面那一块，
+			// 不整页重画，免得把表单里还没保存的修改冲掉。
+			const setCover = async (button, name) => {
+				try {
+					const saved = await withButton(button, () =>
+						api(`/api/admin/albums/${encodeURIComponent(editing)}/cover`, { method: "POST", body: { name } }),
+					);
+					album.cover = saved.cover || "";
+					album.coverSource = saved.coverSource || "none";
+					paintCover(card, album.cover, album.coverSource);
+					toast(name ? "封面已更新" : "已恢复默认封面");
+				} catch (error) {
+					toast(error.message, "err");
+				}
+			};
+			card.querySelectorAll("[data-set-cover]").forEach((node) => {
+				node.onclick = () => setCover(node, node.dataset.setCover);
+			});
+			card.querySelector("[data-cover-reset]").onclick = (event) => setCover(event.currentTarget, "");
 			card.querySelector("#back").onclick = () => {
 				editing = null;
 				draw();

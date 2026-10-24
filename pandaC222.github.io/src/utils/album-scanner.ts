@@ -31,6 +31,16 @@ export async function scanAlbums(): Promise<AlbumGroup[]> {
 	return albums;
 }
 
+// info.cover 由后台的「设为封面」写入。本地文件的写法是 /images/...，
+// 用它之前先确认文件还在 —— 照片被删掉时不该在页面上留一个坏图。
+// 外链模式写的是完整 URL，直接用。
+function hasManualCover(value: unknown): value is string {
+	if (typeof value !== "string" || !value.trim()) return false;
+	const cover = value.trim();
+	if (!cover.startsWith("/images/")) return true;
+	return fs.existsSync(path.join(process.cwd(), "public", cover));
+}
+
 async function processAlbumFolder(
 	folderPath: string,
 	folderName: string,
@@ -68,11 +78,15 @@ async function processAlbumFolder(
 		cover = info.cover;
 		photos = processExternalPhotos(info.photos || [], folderName);
 	} else {
-		// 本地模式：先扫照片；无 cover 时用第一张图兜底，避免后台新建相册前台不显示
+		// 本地模式：先扫照片；再无封面时用第一张图兜底，避免后台新建相册前台不显示。
+		// 封面优先级：info.cover（后台「设为封面」写的）> 文件夹里的 cover.webp/cover.jpg > 第一张图。
 		photos = scanPhotos(folderPath, folderName);
 		const webpCover = path.join(folderPath, "cover.webp");
 		const jpgCover = path.join(folderPath, "cover.jpg");
-		if (fs.existsSync(webpCover)) {
+		const manualCover = hasManualCover(info.cover) ? info.cover.trim() : "";
+		if (manualCover) {
+			cover = manualCover;
+		} else if (fs.existsSync(webpCover)) {
 			cover = `/images/albums/${folderName}/cover.webp`;
 		} else if (fs.existsSync(jpgCover)) {
 			cover = `/images/albums/${folderName}/cover.jpg`;

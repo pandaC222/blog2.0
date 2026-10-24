@@ -1,3 +1,4 @@
+import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -9,7 +10,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import { db, dbPath, uploadsDir, withTransaction } from "./db.js";
 import { registerAdminContent } from "./admin-routes.js";
-import { removePostFile, savePublicUpload, writePostFromRow } from "./content-files.js";
+import { removePostFile, savePublicUpload, siteRoot, writePostFromRow } from "./content-files.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -248,17 +249,43 @@ function requireAuth(req, res, next) {
 	if (!token) return res.status(401).json({ error: "未登录" });
 	try {
 		req.user = jwt.verify(token, JWT_SECRET);
-		next();
 	} catch {
-		res.status(401).json({ error: "登录已失效" });
+		return res.status(401).json({ error: "登录已失效" });
 	}
+	// 改过密码之后，签发时间早于改密时刻的 token 一律作废（= 其它设备被踢下线）。
+	// 改密接口会同时下发一个重新签发的 token，所以改密的本机不会被踢。
+	const row = db.prepare("SELECT pwd_changed_at FROM admin_users WHERE id = ?").get(req.user.id);
+	if (!row) return res.status(401).json({ error: "登录已失效" });
+	if (row.pwd_changed_at && Number(req.user.iat || 0) < row.pwd_changed_at) {
+		return res.status(401).json({ error: "密码已修改，请重新登录" });
+	}
+	next();
+}
+
+// Astro 生成的路由会把标题式 slug 归一化：
+//   "AtCoder"                          -> atcoder
+//   "Codeforces Round 1090 (Div. 4)"   -> codeforces-round-1090-div-4
+// 而库里的 slug 存的是原文。前台脚本按 URL 取 slug 来查，两边对不上就会 404，
+// 表现为「阅读量和评论不工作」。所以精确匹配不到时，按同样的规则再比一次。
+function normalizeSlug(value) {
+	return String(value || "")
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]+/gu, "-")
+		.replace(/^-+|-+$/g, "");
 }
 
 function getPostBySlug(slug, { includeDraft = false } = {}) {
 	const row = includeDraft
 		? db.prepare("SELECT * FROM posts WHERE slug = ?").get(slug)
 		: db.prepare("SELECT * FROM posts WHERE slug = ? AND draft = 0").get(slug);
-	return row || null;
+	if (row) return row;
+	// 精确匹配不到才回退（文章量很小，全表扫一遍无所谓）
+	const target = normalizeSlug(slug);
+	if (!target) return null;
+	const rows = includeDraft
+		? db.prepare("SELECT * FROM posts").all()
+		: db.prepare("SELECT * FROM posts WHERE draft = 0").all();
+	return rows.find((item) => normalizeSlug(item.slug) === target) || null;
 }
 
 app.get("/api/health", (_req, res) => {
@@ -279,6 +306,33 @@ app.post("/api/admin/login", (req, res) => {
 
 app.get("/api/admin/me", requireAuth, (req, res) => {
 	res.json({ id: req.user.id, username: req.user.username });
+});
+
+// 改密码。注意：当前密码不对时返回 400 而不是 401 —— 前端 api() 见到 401 会当成
+// token 失效、清掉登录态并跳回登录页，那样只是打错一次当前密码就被登出了。
+app.post("/api/admin/password", requireAuth, (req, res) => {
+	const current = String(req.body?.current ?? "");
+	const next = String(req.body?.next ?? "");
+	if (!current || !next) return res.status(400).json({ error: "请填写当前密码和新密码" });
+	if (next.length < 8) return res.status(400).json({ error: "新密码至少 8 位" });
+	if (next.length > 200) return res.status(400).json({ error: "新密码太长了（最多 200 位）" });
+	if (next === current) return res.status(400).json({ error: "新密码和当前密码一样" });
+	const user = db
+		.prepare("SELECT id, username, password_hash FROM admin_users WHERE id = ?")
+		.get(req.user.id);
+	if (!user) return res.status(401).json({ error: "登录已失效" });
+	if (!bcrypt.compareSync(current, user.password_hash)) {
+		return res.status(400).json({ error: "当前密码不对" });
+	}
+	// 先落库再签发新 token：新 token 的 iat 一定 >= pwd_changed_at，不会被下面的校验踢掉。
+	// 顺序反过来（先签后写）会有一个跨秒边界的窗口，把管理员自己锁在外面。
+	const changedAt = Math.floor(Date.now() / 1000);
+	db.prepare("UPDATE admin_users SET password_hash = ?, pwd_changed_at = ? WHERE id = ?").run(
+		bcrypt.hashSync(next, 10),
+		changedAt,
+		user.id,
+	);
+	res.json({ ok: true, token: signToken(user) });
 });
 
 function listPosts(req, { includeDraft = false, includeSecrets = false } = {}) {
@@ -728,6 +782,62 @@ app.post("/api/admin/comments/:id/reply", requireAuth, (req, res) => {
 });
 
 registerAdminContent(app, requireAuth);
+
+/* ---------------------------------------------------------------------------
+   重建前台静态站
+   前台是 output:"static"，后台改完 .md/.yml 只是落盘，必须重新 astro build
+   前台才会变。这里异步跑一次构建，请求立即返回，不阻塞保存。
+   构建命令由环境变量 REBUILD_CMD 给（见 deploy/），没配就整体禁用。
+   --------------------------------------------------------------------------- */
+const REBUILD_CMD = process.env.REBUILD_CMD || "";
+let rebuildState = { running: false, startedAt: null, finishedAt: null, ok: null, error: "", log: "" };
+let rebuildQueued = false;
+
+function startRebuild() {
+	rebuildState = { running: true, startedAt: nowISO(), finishedAt: null, ok: null, error: "", log: "" };
+	let out = "";
+	const child = spawn(REBUILD_CMD, { cwd: siteRoot, shell: true });
+	child.stdout?.on("data", (chunk) => {
+		out += chunk.toString();
+	});
+	child.stderr?.on("data", (chunk) => {
+		out += chunk.toString();
+	});
+	child.on("error", (error) => {
+		rebuildState = { ...rebuildState, running: false, finishedAt: nowISO(), ok: false, error: String(error?.message || error) };
+		console.error("[blog2] rebuild 启动失败", error);
+	});
+	child.on("close", (code) => {
+		rebuildState = {
+			...rebuildState,
+			running: false,
+			finishedAt: nowISO(),
+			ok: code === 0,
+			error: code === 0 ? "" : `构建退出码 ${code}`,
+			log: out.slice(-4000),
+		};
+		console.log(`[blog2] rebuild ${code === 0 ? "完成" : "失败"}（退出码 ${code}）`);
+		// 构建期间又有保存，末尾补跑一次，保证最后一次改动生效
+		if (rebuildQueued) {
+			rebuildQueued = false;
+			startRebuild();
+		}
+	});
+}
+
+app.get("/api/admin/rebuild", requireAuth, (_req, res) => {
+	res.json({ configured: Boolean(REBUILD_CMD), ...rebuildState });
+});
+
+app.post("/api/admin/rebuild", requireAuth, (_req, res) => {
+	if (!REBUILD_CMD) return res.status(503).json({ error: "未配置 REBUILD_CMD，无法重建" });
+	if (rebuildState.running) {
+		rebuildQueued = true;
+		return res.status(202).json({ ok: true, queued: true, message: "已有构建在跑，排在它后面" });
+	}
+	startRebuild();
+	res.status(202).json({ ok: true, message: "已开始重建" });
+});
 
 app.use((error, _req, res, _next) => {
 	console.error(error);

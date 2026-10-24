@@ -33,7 +33,8 @@ import { remarkMermaid } from "./src/plugins/remark-mermaid.js";
 
 // https://astro.build/config
 export default defineConfig({
-	site:'https://pandac222.github.io',
+	// 部署到自己的域名时用 SITE_URL 覆盖（sitemap / RSS / OG 图都依赖它）。
+	site: process.env.SITE_URL || 'https://pandac222.github.io',
 	// base: "/",
 	trailingSlash: "always",
 

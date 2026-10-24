@@ -23,6 +23,11 @@ if (!commentCols.some((col) => col.name === "is_admin")) {
 	db.exec("ALTER TABLE comments ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0");
 }
 
+const adminCols = db.prepare("PRAGMA table_info(admin_users)").all();
+if (!adminCols.some((col) => col.name === "pwd_changed_at")) {
+	db.exec("ALTER TABLE admin_users ADD COLUMN pwd_changed_at INTEGER NOT NULL DEFAULT 0");
+}
+
 export function withTransaction(fn) {
 	db.exec("BEGIN");
 	try {

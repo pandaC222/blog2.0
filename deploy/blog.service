@@ -1,0 +1,19 @@
+[Unit]
+Description=blog2 API (Express + SQLite)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/blog/server
+# server/.env 里放 PORT / JWT_SECRET / ADMIN_* / REBUILD_CMD，由 dotenv 读取
+ExecStart=/usr/local/bin/node --disable-warning=ExperimentalWarning index.js
+Restart=always
+RestartSec=3
+KillSignal=SIGINT
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=blog2
+
+[Install]
+WantedBy=multi-user.target
