@@ -4,14 +4,14 @@
 
 | 项 | 值 |
 |---|---|
-| 服务器 | `<your-server>`（Ubuntu 22.04.5，2 核 / 1.7G / 40G） |
-| 域名 | `blog.pandac222.cn`（已备案，已解析到该 IP） |
+| 服务器 | `<你的服务器 IP>`（Ubuntu 22.04.5，2 核 / 1.7G / 40G） |
+| 域名 | `blog.pandac222.cn`（已备案，已解析到服务器） |
 | 站点根 | `/opt/blog` |
 | 前台 | `/opt/blog/pandaC222.github.io/dist`（nginx 直接托管） |
 | 后端 | `systemctl blog`，`node index.js`，监听 127.0.0.1:3000 |
 | 数据库 | `/opt/blog/data/blog.db`（WAL 模式） |
 | 证书 | Let's Encrypt，`certbot.timer` 自动续期 |
-| 登录 | 密钥 `<your-key>`（root），密码在 `server/.env` |
+| 登录 | SSH 密钥登录（`<你的登录用户>` + `<你的私钥路径>`），凭据只在本地保存，不入库 |
 
 ## 请求怎么走
 
@@ -63,11 +63,19 @@ sqlite3 /opt/blog/data/blog.db ".backup /root/blog-$(date +%F).db"   # 没装 sq
 
 ## 更新代码
 
+下面的命令用三个变量，先按自己的环境赋值（**别把它们写进仓库**）：
+
+```bash
+HOST=<你的服务器 IP 或域名>
+SSH_USER=<你的登录用户>
+SSH_KEY=<你的私钥路径>
+```
+
 后端单文件改动可以直接传：
 
 ```bash
-scp -i <your-key> server/index.js <ssh-user>@<your-server>:/opt/blog/server/
-ssh -i <your-key> <ssh-user>@<your-server> "systemctl restart blog"
+scp -i "$SSH_KEY" server/index.js "$SSH_USER@$HOST":/opt/blog/server/
+ssh -i "$SSH_KEY" "$SSH_USER@$HOST" "systemctl restart blog"
 ```
 
 前端/后台改动要重新构建：
@@ -77,8 +85,8 @@ ssh -i <your-key> <ssh-user>@<your-server> "systemctl restart blog"
 tar czf /tmp/blog-src.tar.gz --exclude='node_modules' --exclude='.astro' --exclude='.git' \
   --exclude='dist' --exclude='.transfer-backup' --exclude='.devin' --exclude='*.bak' \
   admin server deploy schema.sql pandaC222.github.io
-scp -i <your-key> /tmp/blog-src.tar.gz <ssh-user>@<your-server>:/tmp/
-ssh -i <your-key> <ssh-user>@<your-server> "tar xzf /tmp/blog-src.tar.gz -C /opt/blog && bash /opt/blog/deploy/rebuild.sh"
+scp -i "$SSH_KEY" /tmp/blog-src.tar.gz "$SSH_USER@$HOST":/tmp/
+ssh -i "$SSH_KEY" "$SSH_USER@$HOST" "tar xzf /tmp/blog-src.tar.gz -C /opt/blog && bash /opt/blog/deploy/rebuild.sh"
 ```
 
 > `--exclude='*.bak'` 别省。`src/layouts/Layout.astro.bak` 会被 Vite 当源码扫进去，
