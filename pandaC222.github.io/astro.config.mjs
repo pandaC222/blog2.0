@@ -223,6 +223,8 @@ export default defineConfig({
 			// 静态资源处理优化，防止小图片转 base64 导致 HTML 体积过大
 			assetsInlineLimit: 4096,
 			// CSS 代码分割
+			// 试过关掉（cssCodeSplit: false）来把 15 个 CSS 合并成 1 个，
+			// 但这台 1.7G 内存的服务器连续两次打包 SIGABRT，只能保持分割。
 			cssCodeSplit: true,
 			cssMinify: "esbuild",
 			// 内联小型 CSS 文件以减少网络请求

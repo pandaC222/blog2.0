@@ -262,12 +262,11 @@ const hasBannerLink = !!siteConfig.banner.credit.url;
 				rememberInitialFrame('banner-image-slot-mobile');
 				rememberInitialFrame('banner-image-slot-desktop');
 
-				// 随机起始索引（Swup 导航间保留，F5 刷新重置）
+				// 首屏固定从第一张开始：随机起始图让浏览器无法预加载 LCP 图，
+				// 而且每次刷新抽到的图大小不同（30KB~239KB），首屏速度不可控。
+				// 轮播依旧按顺序循环，只是不再随机跳起点。
 				if (typeof window.__bannerRandomIndex === 'undefined') {
-					window.__bannerRandomIndex = {
-						mobile: mobileCount > 1 ? Math.floor(Math.random() * mobileCount) : 0,
-						desktop: desktopCount > 1 ? Math.floor(Math.random() * desktopCount) : 0
-					};
+					window.__bannerRandomIndex = { mobile: 0, desktop: 0 };
 				}
 
 				// 从 template 替换默认图片

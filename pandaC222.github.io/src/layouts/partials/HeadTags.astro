@@ -110,6 +110,21 @@ const favicons: Favicon[] =
 <!-- 预连接 Iconify API 以减少图标加载延迟 -->
 <link rel="preconnect" href="https://api.iconify.design" crossorigin />
 
+{
+	// 正文字体（萝莉体）有 171KB，不预加载的话会在首屏文字渲染完之后才到位，
+	// 字体一换行高和字宽都变，侧边栏被整体推下去（实测 CLS 0.17）。
+	// 只在生产环境加：dev 下 compress-fonts 还没跑，woff2 不存在。
+	import.meta.env.PROD && (
+		<link
+			rel="preload"
+			href="/assets/font/loli.woff2"
+			as="font"
+			type="font/woff2"
+			crossorigin
+		/>
+	)
+}
+
 <!-- Set the theme before the page is rendered to avoid a flash -->
 <script
 	is:inline

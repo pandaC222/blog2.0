@@ -113,8 +113,7 @@ const renderGroups = [
 						data-carousel-item={index}
 						style={`transform: translateZ(0); backface-visibility: hidden; will-change: opacity; ${blurAmount > 0 ? `filter: blur(${blurAmount}px);` : ''}; opacity: ${index === 0 ? 1 : 0};`}
 						decoding="async"
-						loading={index === 0 ? "eager" : "lazy"}
-						fetchpriority={index === 0 ? "high" : undefined}
+						loading="lazy"
 					/>
 				))}
 			</div>

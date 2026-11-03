@@ -1,4 +1,5 @@
 ---
+import fs from "node:fs";
 import path from "node:path";
 
 interface Props {
@@ -67,6 +68,20 @@ const imageStyle = `object-position: ${position}`;
 const isBilibiliImage = !isLocal && src.includes("hdslb.com");
 // 对于外部图片（特别是 Bilibili），需要设置 referrerpolicy 避免 403 错误
 const referrerPolicy = !isLocal && isBilibiliImage ? "no-referrer" : undefined;
+// 横幅类图片（public 下的壁纸）额外提供 780px 移动版，
+// 手机端只下 ~35KB 而不是 175KB 的原图。
+// 约定：同名加 -m 后缀，构建时若文件不存在就不输出 srcset。
+const bannerLike = isPublic && /\/desktop-banner\/|\/uploads\/banners\//.test(src);
+let publicSrcset: string | undefined;
+let publicSizes: string | undefined;
+if (bannerLike) {
+	const mobileSrc = src.replace(/\.webp$/i, "-m.webp");
+	const mobileAbs = path.join(process.cwd(), "public", mobileSrc);
+	if (fs.existsSync(mobileAbs)) {
+		publicSrcset = `${url(mobileSrc)} 780w, ${url(src)} 1920w`;
+		publicSizes = "100vw";
+	}
+}
 ---
 
 <div id={id} class:list={[className, "overflow-hidden relative"]}>
@@ -92,6 +107,8 @@ const referrerPolicy = !isLocal && isBilibiliImage ? "no-referrer" : undefined;
 		!isLocal && (
 			<img
 				src={isPublic ? url(src) : src}
+				srcset={publicSrcset}
+				sizes={publicSrcset ? publicSizes : undefined}
 				alt={alt || ""}
 				class={imageClass}
 				style={imageStyle}

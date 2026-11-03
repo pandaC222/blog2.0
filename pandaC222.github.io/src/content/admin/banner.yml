@@ -9,7 +9,7 @@ desktop:
 mobile: []
 carousel:
   enable: true
-  interval: 3
+  interval: 6
 homeText:
   enable: true
   title: pandac222的blog
