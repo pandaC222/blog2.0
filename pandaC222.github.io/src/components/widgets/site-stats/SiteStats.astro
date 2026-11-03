@@ -1,4 +1,7 @@
 ---
+import fs from "node:fs";
+import path from "node:path";
+
 import { Icon } from "astro-icon/components";
 
 import { siteConfig } from "../../../config";
@@ -61,17 +64,53 @@ function formatNumber(num: number): string {
 	return num.toLocaleString();
 }
 
-// 获取最新文章日期（忽略置顶状态，只按发布日期排序）
-const latestPost = posts.reduce((latest, post) => {
-	if (!latest) {
-		return post;
-	}
-	return post.data.published > latest.data.published ? post : latest;
-}, posts[0]);
+// 「最后活动」= 最近一次内容改动，不能只看文章发布日期：
+// 改相册、日记、友链、时间线这些都不写文章，但确实是站点更新。
+// 这里取内容目录里最新的文件修改时间。
+// 组件在多个页面渲染，用模块级缓存避免重复扫描。
+let cachedLastActivity: string | null | undefined;
 
-const lastPostDate = latestPost
-	? latestPost.data.published.toISOString()
-	: null;
+function scanLatestMtime(dir: string, skip: (name: string) => boolean): number {
+	let max = 0;
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return 0; // 目录不存在就跳过
+	}
+	for (const entry of entries) {
+		if (skip(entry.name)) continue;
+		const abs = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			max = Math.max(max, scanLatestMtime(abs, skip));
+		} else {
+			try {
+				max = Math.max(max, fs.statSync(abs).mtimeMs);
+			} catch {
+				/* 单个文件读不到不影响整体 */
+			}
+		}
+	}
+	return max;
+}
+
+function getLastActivity(): string | null {
+	if (cachedLastActivity !== undefined) return cachedLastActivity;
+	const root = process.cwd();
+	// 系统产出的缩略图（.thumb.webp / -m.webp）不算用户活动，否则每次构建都刷新
+	const skip = (name: string) =>
+		name.startsWith(".") || /(\.thumb|-m)\.webp$/i.test(name);
+
+	const latest = Math.max(
+		scanLatestMtime(path.join(root, "src/content"), skip), // 文章 + 各板块 yml
+		scanLatestMtime(path.join(root, "public/images/albums"), skip), // 相册照片与 info.json
+	);
+
+	cachedLastActivity = latest > 0 ? new Date(latest).toISOString() : null;
+	return cachedLastActivity;
+}
+
+const lastActivityDate = getLastActivity();
 
 const stats = [
 	{
@@ -142,7 +181,10 @@ const stats = [
 								: stat.value}
 						</span>
 						{stat.suffix && (
-							<span class="text-sm text-neutral-500 dark:text-neutral-400 ml-1">
+							<span
+								class="text-sm text-neutral-500 dark:text-neutral-400 ml-1"
+								data-stat-suffix={stat.id}
+							>
 								{stat.suffix}
 							</span>
 						)}
@@ -153,7 +195,7 @@ const stats = [
 	</div>
 </WidgetLayout>
 
-<script is:inline define:vars={{ siteStartDate, lastPostDate }}>
+<script is:inline define:vars={{ siteStartDate, lastActivityDate }}>
 	function updateDynamicStats() {
 		const today = new Date();
 
@@ -171,24 +213,32 @@ const stats = [
 			});
 		}
 
-		// 更新最后活动时间
-		if (lastPostDate) {
-			const lastPost = new Date(lastPostDate);
-			const timeSinceLastPost = Math.abs(
-				today.getTime() - lastPost.getTime(),
+		// 更新最后活动时间（取内容文件的最新修改时间）
+		if (lastActivityDate) {
+			const lastActive = new Date(lastActivityDate);
+			const timeSinceLast = Math.abs(
+				today.getTime() - lastActive.getTime(),
 			);
-			const daysSinceLastUpdate = Math.floor(
-				timeSinceLastPost / (1000 * 60 * 60 * 24),
+			const daysSinceUpdate = Math.floor(
+				timeSinceLast / (1000 * 60 * 60 * 24),
 			);
 
 			const lastUpdateElements = document.querySelectorAll(
 				'[data-stat-id="last-update"]',
 			);
-			if (lastUpdateElements.length > 0) {
-				lastUpdateElements.forEach((element) => {
-					element.textContent = daysSinceLastUpdate.toString();
-				});
-			}
+			lastUpdateElements.forEach((element) => {
+				// 当天改的就显示「今天」，比「0 天前」自然
+				const isToday = daysSinceUpdate === 0;
+				element.textContent = isToday
+					? "今天"
+					: daysSinceUpdate.toString();
+				const suffix = element.parentElement?.querySelector(
+					'[data-stat-suffix="last-update"]',
+				);
+				if (suffix) {
+					suffix.style.display = isToday ? "none" : "";
+				}
+			});
 		}
 	}
 
