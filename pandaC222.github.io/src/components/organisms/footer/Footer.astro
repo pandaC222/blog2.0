@@ -1,16 +1,21 @@
 ---
-// 极简 Footer：只渲染 footerConfig 里配置的自定义内容（备案号等）。
-// 没有配置时整块不渲染，不占位、不影响布局。
-import { footerConfig } from "../../../config";
+// 极简 Footer：只显示备案号（来源 src/content/admin/site.yml，后台「站点设置」可改）。
+// 没填就整块不渲染，不占位、不影响布局。
+import { loadSiteConfig } from "../../../utils/load-admin-config";
 
-const customHtml = (footerConfig.enable ? footerConfig.customHtml || "" : "").trim();
-const currentYear = new Date().getFullYear();
+const site = loadSiteConfig();
+const icp = (site.icp || "").trim();
+const icpLink = (site.icpLink || "").trim() || "https://beian.miit.gov.cn/";
 ---
 
 {
-	customHtml && (
+	icp && (
 		<footer class="blog-footer text-50">
-			<div class="footer-inner" set:html={customHtml} />
+			<div class="footer-inner">
+				<a href={icpLink} target="_blank" rel="noopener noreferrer">
+					{icp}
+				</a>
+			</div>
 		</footer>
 	)
 }
@@ -35,13 +40,5 @@ const currentYear = new Date().getFullYear();
 		color: oklch(0.62 0.14 var(--hue, 240));
 		text-decoration: underline;
 		text-underline-offset: 3px;
-	}
-
-	.footer-inner :global(p) {
-		margin: 0;
-	}
-
-	.footer-inner :global(p + p) {
-		margin-top: 4px;
 	}
 </style>

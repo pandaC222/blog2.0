@@ -18,6 +18,7 @@ import skillsRaw from "../content/admin/skills.yml?raw";
 import timelineRaw from "../content/admin/timeline.yml?raw";
 import musicRaw from "../content/admin/music.yml?raw";
 import pioRaw from "../content/admin/pio.yml?raw";
+import siteRaw from "../content/admin/site.yml?raw";
 
 type FeaturePages = SiteConfig["featurePages"];
 
@@ -468,6 +469,48 @@ export function loadMusicConfig(): MusicAdminConfig {
 		id: String(data.id ?? ""),
 		server: data.server ?? "netease",
 		type: data.type ?? "playlist",
+	};
+}
+
+export type SiteAdminConfig = {
+	title: string;
+	subtitle: string;
+	navbarText: string;
+	navbarIcon: string;
+	navbarLogo: string;
+	favicon: string;
+	appleIcon: string;
+	icp: string;
+	icpLink: string;
+};
+
+const DEFAULT_SITE: SiteAdminConfig = {
+	title: "pandac'blog",
+	subtitle: "",
+	navbarText: "pandac",
+	navbarIcon: "assets/home/now.webp",
+	navbarLogo: "assets/home/now.webp",
+	favicon: "/favicon/favicon.ico",
+	appleIcon: "",
+	icp: "",
+	icpLink: "https://beian.miit.gov.cn/",
+};
+
+// 站点基础信息。空字符串是有效值（表示"不显示"），所以不能用 ?? 之外的方式兜底。
+export function loadSiteConfig(): SiteAdminConfig {
+	const data = parseYaml<Partial<SiteAdminConfig>>(siteRaw);
+	const pick = <K extends keyof SiteAdminConfig>(key: K): SiteAdminConfig[K] =>
+		(data[key] === undefined || data[key] === null ? DEFAULT_SITE[key] : data[key]) as SiteAdminConfig[K];
+	return {
+		title: pick("title"),
+		subtitle: pick("subtitle"),
+		navbarText: pick("navbarText"),
+		navbarIcon: pick("navbarIcon"),
+		navbarLogo: pick("navbarLogo"),
+		favicon: pick("favicon"),
+		appleIcon: pick("appleIcon"),
+		icp: pick("icp"),
+		icpLink: pick("icpLink"),
 	};
 }
 

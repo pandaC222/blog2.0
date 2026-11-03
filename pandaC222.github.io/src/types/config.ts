@@ -11,6 +11,7 @@ export interface SiteConfig {
 	subtitle: string;
 	siteURL: string; // 站点URL，以斜杠结尾，例如：https://mizuki.mysqil.com/
 	keywords?: string[]; // 站点关键词，用于生成 <meta name="keywords">
+	appleTouchIcon?: string; // iOS 添加到主屏时的图标，留空则不输出该标签
 	siteStartDate?: string; // 站点开始日期，格式：YYYY-MM-DD，用于计算运行天数
 
 	timeZone:

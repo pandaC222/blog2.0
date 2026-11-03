@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import bcrypt from "bcryptjs";
@@ -8,7 +9,7 @@ import dotenv from "dotenv";
 import express from "express";
 import jwt from "jsonwebtoken";
 import multer from "multer";
-import { db, dbPath, uploadsDir, withTransaction } from "./db.js";
+import { db, dbPath, rootDir, uploadsDir, withTransaction } from "./db.js";
 import { registerAdminContent } from "./admin-routes.js";
 import { removePostFile, savePublicUpload, siteRoot, writePostFromRow } from "./content-files.js";
 
@@ -236,6 +237,8 @@ app.use(express.json({ limit: "2mb" }));
 
 app.use("/uploads", express.static(uploadsDir));
 app.use("/admin", express.static(path.join(__dirname, "..", "admin")));
+// 后台页面引用了 /favicon/*，本地开发时没有 nginx，只能由后端兜一下
+app.use("/favicon", express.static(path.join(siteRoot, "public", "favicon")));
 
 function signToken(user) {
 	return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, {
@@ -687,11 +690,11 @@ const memoryUpload = multer({
 });
 
 app.post("/api/admin/upload", requireAuth, (req, res) => {
-	memoryUpload.single("file")(req, res, (error) => {
+	memoryUpload.single("file")(req, res, async (error) => {
 		if (error) return res.status(400).json({ error: error.message });
 		if (!req.file) return res.status(400).json({ error: "缺少文件字段 file" });
 		try {
-			const saved = savePublicUpload(req.file.buffer, req.file.originalname, req.body?.folder || "");
+			const saved = await savePublicUpload(req.file.buffer, req.file.originalname, req.body?.folder || "");
 			db.prepare(
 				`INSERT INTO uploads (filename, original_name, mime, size_bytes, public_path)
 				 VALUES (?, ?, ?, ?, ?)`,
@@ -837,6 +840,68 @@ app.post("/api/admin/rebuild", requireAuth, (_req, res) => {
 	}
 	startRebuild();
 	res.status(202).json({ ok: true, message: "已开始重建" });
+});
+
+/* ---------------------------------------------------------------------------
+   数据备份
+   把数据库、内容源文件、上传图片打成一个 tar.gz 直接下载。
+   不含 node_modules / dist，所以体积很小（主要来自相册原图）。
+   --------------------------------------------------------------------------- */
+app.get("/api/admin/backup", requireAuth, (_req, res) => {
+	// 先把 WAL 合并进主库。不 checkpoint 的话 blog.db 可能只有 4KB，
+	// 真正的数据全在 -wal 里，备份出来就是空库。
+	try {
+		db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+	} catch (error) {
+		console.error("[blog2] 备份前 checkpoint 失败", error);
+	}
+
+	const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+	const name = `blog-backup-${stamp}.tar.gz`;
+	const out = path.join(os.tmpdir(), name);
+
+	const args = [
+		"-czf",
+		out,
+		"-C",
+		rootDir,
+		"data/blog.db",
+		"schema.sql",
+		"pandaC222.github.io/src/content",
+		"pandaC222.github.io/public/uploads",
+		"pandaC222.github.io/public/images/albums",
+	];
+
+	// Windows 的 PATH 里通常是 Git 自带的 GNU tar，它会把 "-f C:\..." 里的冒号
+	// 当成远程主机名（报 "Cannot connect to C:"）。所以 Windows 显式用系统 bsdtar，
+	// Linux 直接用 PATH 里的 tar。
+	const tarBin =
+		process.platform === "win32"
+			? path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe")
+			: "tar";
+
+	const child = spawn(tarBin, args, { shell: false });
+	let stderr = "";
+	child.stderr?.on("data", (chunk) => {
+		stderr += chunk.toString();
+	});
+	child.on("error", (error) => {
+		fs.unlink(out, () => {});
+		if (!res.headersSent) res.status(500).json({ error: `打包失败：${error.message}` });
+	});
+	child.on("close", (code) => {
+		if (code !== 0) {
+			fs.unlink(out, () => {});
+			if (!res.headersSent) {
+				res.status(500).json({ error: `打包失败：${stderr.slice(-400) || `退出码 ${code}`}` });
+			}
+			return;
+		}
+		res.download(out, name, (downloadError) => {
+			fs.unlink(out, () => {});
+			if (downloadError && !res.headersSent) console.error("[blog2] 备份下载中断", downloadError);
+		});
+	});
 });
 
 app.use((error, _req, res, _next) => {

@@ -298,11 +298,11 @@ export function registerAdminContent(app, requireAuth) {
 	});
 
 	app.post("/api/admin/media", requireAuth, (req, res) => {
-		memoryUpload.single("file")(req, res, (error) => {
+		memoryUpload.single("file")(req, res, async (error) => {
 			if (error) return res.status(400).json({ error: error.message });
 			if (!req.file) return res.status(400).json({ error: "缺少文件字段 file" });
 			try {
-				const saved = savePublicUpload(req.file.buffer, req.file.originalname, req.body?.folder);
+				const saved = await savePublicUpload(req.file.buffer, req.file.originalname, req.body?.folder);
 				res.status(201).json(saved);
 			} catch (err) {
 				sendError(res, err);
@@ -350,11 +350,11 @@ export function registerAdminContent(app, requireAuth) {
 	});
 
 	app.post("/api/admin/albums/:id/photos", requireAuth, (req, res) => {
-		memoryUpload.single("file")(req, res, (error) => {
+		memoryUpload.single("file")(req, res, async (error) => {
 			if (error) return res.status(400).json({ error: error.message });
 			if (!req.file) return res.status(400).json({ error: "缺少文件字段 file" });
 			try {
-				const saved = saveAlbumPhoto(req.params.id, req.file.buffer, req.file.originalname);
+				const saved = await saveAlbumPhoto(req.params.id, req.file.buffer, req.file.originalname);
 				res.status(201).json(saved);
 			} catch (err) {
 				sendError(res, err);

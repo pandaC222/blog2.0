@@ -24,6 +24,7 @@ import {
 	loadMusicConfig,
 	loadPioConfig,
 	loadProfileConfig,
+	loadSiteConfig,
 } from "./utils/load-admin-config";
 
 // 移除i18n导入以避免循环依赖
@@ -32,10 +33,14 @@ import {
 const SITE_LANG = "zh_CN"; // 语言代码，例如：'en', 'zh_CN', 'ja' 等。
 const SITE_TIMEZONE = 8; //设置你的网站时区 from -12 to 12 default in UTC+8
 const adminBanner = loadBannerConfig();
+// 站点基础信息由 src/content/admin/site.yml 提供，可在 /admin「站点设置」里改
+const adminSite = loadSiteConfig();
 export const siteConfig: SiteConfig = {
-	title: "pandac'blog",
-	subtitle: "希望有朝一日成为算法大蛇",
+	title: adminSite.title,
+	subtitle: adminSite.subtitle,
 	siteURL: "https://pandac222.github.io/", // 请替换为你的站点URL，以斜杠结尾
+	// iOS「添加到主屏」图标（来自 site.yml，留空则不输出该标签）
+	appleTouchIcon: adminSite.appleIcon || undefined,
 	siteStartDate: "2026-04-04", // 站点开始运行日期，用于站点统计组件计算运行天数
 
 	timeZone: SITE_TIMEZONE,
@@ -50,16 +55,16 @@ export const siteConfig: SiteConfig = {
 	// 特色页面开关：由 src/content/admin/features.yml 提供，可在 /admin CMS 编辑
 	featurePages: loadFeaturePages(),
 
-	// 顶栏标题配置
+	// 顶栏标题配置（由 site.yml 提供）
 	navbarTitle: {
 		// 显示模式："text-icon" 显示图标+文本，"logo" 仅显示Logo
 		mode: "text-icon",
 		// 顶栏标题文本
-		text: "pandac",
-		// 顶栏标题图标路径，默认使用 public/assets/home/home.webp
-		icon: "assets/home/now.webp",
+		text: adminSite.navbarText,
+		// 顶栏标题图标路径
+		icon: adminSite.navbarIcon,
 		// 网站Logo图片路径
-		logo: "assets/home/now.webp",
+		logo: adminSite.navbarLogo,
 	},
 
 	// 页面自动缩放配置
@@ -183,14 +188,7 @@ export const siteConfig: SiteConfig = {
 	},
 	showCoverInContent: true, // 在文章内容页显示文章封面
 	generateOgImages: false, // 启用生成OpenGraph图片功能,注意开启后要渲染很长时间，不建议本地调试的时候开启
-	favicon: [
-		// 留空以使用默认 favicon
-		{
-			src: "/favicon/QQ20260404-181343.png", // 图标文件路径
-			theme: "light", // 可选，指定主题 'light' | 'dark'
-			sizes: "32x32", // 可选，图标大小
-		},
-	],
+	favicon: adminSite.favicon ? [{ src: adminSite.favicon, sizes: "any" }] : [],
 
 	// 字体配置
 	font: {
@@ -434,10 +432,10 @@ export const musicPlayerConfig: MusicPlayerConfig = {
 };
 
 export const footerConfig: FooterConfig = {
-	// 页脚自定义内容。Footer.astro 读这个字段，为空则整块不渲染（不占位）。
-	// 大陆备案要求页脚展示备案号并链接到工信部查询页。
-	enable: true,
-	customHtml: `<a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">豫ICP备2026051917号</a>`,
+	// 页脚内容已迁到 src/content/admin/site.yml 的 icp / icpLink（后台「站点设置」可改）。
+	// 这里保留开关但默认关闭，避免两处重复输出。
+	enable: false,
+	customHtml: "",
 };
 
 /**

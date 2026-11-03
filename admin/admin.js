@@ -11,6 +11,7 @@ const NAV = [
 	{ id: "anime", label: "追番" },
 	{ id: "about", label: "关于我" },
 	{ group: "站点" },
+	{ id: "site", label: "站点设置" },
 	{ id: "friends", label: "友链" },
 	{ id: "projects", label: "项目" },
 	{ id: "skills", label: "技能" },
@@ -400,7 +401,11 @@ async function uploadFile(file, folder = "") {
 
 function img(url) {
 	if (!url) return "";
-	return String(url).startsWith("http") ? url : SITE + url;
+	const value = String(url);
+	if (value.startsWith("http")) return value;
+	// 站内路径统一补前导斜杠：site.yml 里写的是 "assets/home/now.webp"，
+	// 不补的话在 /admin/ 页面会被解析成 /admin/assets/... 直接 404
+	return SITE + (value.startsWith("/") ? value : "/" + value);
 }
 
 function thumb(url, poster) {
@@ -602,6 +607,7 @@ async function open(id) {
 		if (id === "anime") return await renderAnime(panel);
 		if (id === "albums") return await renderAlbums(panel);
 		if (id === "profile") return await renderProfile(panel);
+		if (id === "site") return await renderSite(panel);
 		if (id === "announcement") return await renderAnnouncement(panel);
 		if (id === "banner") return await renderBanner(panel);
 		if (id === "music") return await renderMusic(panel);
@@ -1566,6 +1572,105 @@ async function saveBoard(id, data) {
 	await api("/api/admin/content/boards/" + id, { method: "PUT", body: { data } });
 	state.dirty = false;
 	toast("已保存");
+}
+
+// 站点设置：站名、副标题、顶栏、图标、备案号。
+// 这些原本硬编码在 src/config.ts，改一个字都要开编辑器 + rebuild，现在统一走 site.yml。
+async function renderSite(panel) {
+	const file = await api("/api/admin/content/boards/site");
+	const data = file.data || {};
+	const body = pageHead(panel, "站点设置", file.file);
+
+	// 图片字段：缩略图 + 路径输入 + 上传按钮（复用 bindImageFields 的 data-pick 约定）
+	const imgField = (key, span, label) =>
+		fFld(
+			span,
+			label,
+			`<div class="shot-row">
+				<div class="shot" data-shot="${key}"></div>
+				<div class="shot-fields">
+					<input data-key="${key}" name="${key}" value="${esc(data[key] || "")}">
+					<div class="toolbar"><button class="btn" type="button" data-pick="${key}" data-folder="site">选择图片</button></div>
+					<input data-file="${key}" type="file" accept="image/*" hidden>
+				</div>
+			</div>`,
+		);
+
+	body.innerHTML = `<form class="panel edit-form" id="form">
+		${fGroup(
+			"站点标题",
+			fFld(12, "浏览器标签标题", `<input name="title" value="${esc(data.title || "")}" placeholder="pandac'blog">`) +
+				fFld(12, "副标题", `<input name="subtitle" value="${esc(data.subtitle || "")}">`),
+		)}
+		${fGroup(
+			"顶栏",
+			fFld(4, "顶栏文字", `<input name="navbarText" value="${esc(data.navbarText || "")}">`) +
+				imgField("navbarIcon", 4, "顶栏图标") +
+				imgField("navbarLogo", 4, "站点 Logo"),
+		)}
+		${fGroup(
+			"图标与备案",
+			imgField("favicon", 6, "浏览器图标（建议 32×32 的 .ico/.png）") +
+				imgField("appleIcon", 6, "iOS 主屏图标（建议 180×180，可留空）") +
+				fFld(6, "ICP 备案号", `<input name="icp" value="${esc(data.icp || "")}" placeholder="豫ICP备2026000000号">`) +
+				fFld(6, "备案链接", `<input name="icpLink" value="${esc(data.icpLink || "")}" placeholder="https://beian.miit.gov.cn/">`),
+		)}
+		<section class="fgroup">
+			<h3 class="panel-title">数据备份</h3>
+			<p class="hint lead">打包数据库 + 文章内容 + 上传图片（不含依赖和构建产物），下载到本地保存。</p>
+			<div class="toolbar"><button class="btn" type="button" id="backup">下载备份（tar.gz）</button></div>
+		</section>
+		${formFooter("保存后自动重建前台，约 1 分钟生效")}</form>`;
+
+	bindImageFields(body.querySelector("#form"));
+	const form = body.querySelector("#form");
+
+	// 备份走 fetch + blob，因为要带 Authorization 头，普通 <a download> 带不上
+	body.querySelector("#backup").onclick = async (event) => {
+		const button = event.currentTarget;
+		try {
+			await withButton(button, async () => {
+				const res = await fetch("/api/admin/backup", { headers: { Authorization: "Bearer " + token() } });
+				if (!res.ok) {
+					const payload = await res.json().catch(() => ({}));
+					throw new Error(payload.error || res.statusText || "备份失败");
+				}
+				const blob = await res.blob();
+				const link = document.createElement("a");
+				link.href = URL.createObjectURL(blob);
+				link.download = `blog-backup-${new Date().toISOString().slice(0, 10)}.tar.gz`;
+				link.click();
+				URL.revokeObjectURL(link.href);
+				toast(`备份已下载（${(blob.size / 1024 / 1024).toFixed(1)} MB）`);
+			});
+		} catch (error) {
+			toast(error.message, "err");
+		}
+	};
+
+	markDirty(form);
+	form.onsubmit = async (event) => {
+		event.preventDefault();
+		const input = new FormData(form);
+		try {
+			await withButton(form.querySelector("[type=submit]"), () =>
+				saveBoard("site", {
+					...data,
+					title: input.get("title"),
+					subtitle: input.get("subtitle"),
+					navbarText: input.get("navbarText"),
+					navbarIcon: input.get("navbarIcon"),
+					navbarLogo: input.get("navbarLogo"),
+					favicon: input.get("favicon"),
+					appleIcon: input.get("appleIcon"),
+					icp: input.get("icp"),
+					icpLink: input.get("icpLink"),
+				}),
+			);
+		} catch (error) {
+			toast(error.message, "err");
+		}
+	};
 }
 
 async function renderProfile(panel) {

@@ -1,0 +1,21 @@
+# 站点基础信息。后台「站点设置」板块编辑这里，保存后自动重建前台。
+# 注意：后台保存时会重写整个文件，下面的注释会丢失（值不会丢）。
+
+# 浏览器标签 / SEO 标题
+title: "pandac222'blog"
+
+# 首页副标题
+subtitle: "希望有朝一日成为算法大蛇"
+
+# 顶栏
+navbarText: "pandac222"
+navbarIcon: "/favicon/nav-icon.png"
+navbarLogo: "/uploads/site/1793716024423-5d8a1d.png"
+
+# 站点图标（32×32）与 iOS 主屏图标（180×180）
+favicon: "/favicon/icon-32.png"
+appleIcon: "/favicon/apple-touch-icon.png"
+
+# 页脚备案号，留空则不显示
+icp: "豫ICP备2026051917号"
+icpLink: "https://beian.miit.gov.cn/"

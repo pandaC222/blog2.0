@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 import { parse, stringify } from "yaml";
 import { rootDir } from "./db.js";
 
@@ -7,6 +8,7 @@ export const siteRoot = path.join(rootDir, "pandaC222.github.io");
 export const postsDir = path.join(siteRoot, "src", "content", "posts");
 
 export const BOARDS = {
+	site: { label: "站点设置", file: "src/content/admin/site.yml" },
 	profile: { label: "个人资料", file: "src/content/admin/profile.yml" },
 	announcement: { label: "公告", file: "src/content/admin/announcement.yml" },
 	banner: { label: "首页横幅", file: "src/content/admin/banner.yml" },
@@ -24,6 +26,7 @@ export const BOARDS = {
 
 const UPLOAD_FOLDERS = new Set([
 	"",
+	"site",
 	"diary",
 	"banners",
 	"friends",
@@ -238,16 +241,66 @@ export function writeAbout(body) {
 	return { file: "src/content/spec/about.md" };
 }
 
-export function savePublicUpload(buffer, originalName, folder) {
+// 上传图片统一转 webp：相册里有 2.7MB 的 PNG，前台加载很慢。
+// gif（动图）和 svg（矢量）保持原样，转换会丢内容。
+// 已经是 webp 且尺寸体积都不大的跳过，避免有损二次压缩。
+const OPTIMIZE_EDGE = 1920;
+const OPTIMIZE_QUALITY = 82;
+const RASTER_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif", ".tiff", ".bmp"]);
+
+export async function optimizeImage(buffer, originalName) {
+	const ext = path.extname(originalName || "").toLowerCase();
+	if (!RASTER_EXT.has(ext)) return { buffer, ext };
+	try {
+		const meta = await sharp(buffer, { failOn: "none" }).metadata();
+		if (!meta.width || !meta.height) return { buffer, ext };
+		const longest = Math.max(meta.width, meta.height);
+		if (ext === ".webp" && longest <= OPTIMIZE_EDGE && buffer.length <= 800 * 1024) {
+			return { buffer, ext };
+		}
+		const output = await sharp(buffer, { failOn: "none" })
+			.rotate()
+			.resize({ width: OPTIMIZE_EDGE, height: OPTIMIZE_EDGE, fit: "inside", withoutEnlargement: true })
+			.webp({ quality: OPTIMIZE_QUALITY })
+			.toBuffer();
+		// 压完反而更大就保留原图（极小图、已经压过的图会出现这种情况）
+		if (output.length >= buffer.length) return { buffer, ext };
+		return { buffer: output, ext: ".webp" };
+	} catch (error) {
+		console.error("[blog2] 图片压缩失败，保留原图：", error?.message || error);
+		return { buffer, ext };
+	}
+}
+
+// 站点图标（favicon / apple-touch-icon）不能转 webp：
+// iOS 主屏和部分老浏览器不认 webp 图标。所以 site 目录只做尺寸限制，保持原格式。
+async function optimizeSiteAsset(buffer, originalName) {
+	const ext = path.extname(originalName || "").toLowerCase();
+	if (!RASTER_EXT.has(ext)) return { buffer, ext }; // .ico / .svg 原样
+	try {
+		const output = await sharp(buffer, { failOn: "none" })
+			.rotate()
+			.resize({ width: 512, height: 512, fit: "inside", withoutEnlargement: true })
+			.toBuffer();
+		if (output.length >= buffer.length) return { buffer, ext };
+		return { buffer: output, ext };
+	} catch (error) {
+		console.error("[blog2] 图标压缩失败，保留原图：", error?.message || error);
+		return { buffer, ext };
+	}
+}
+
+export async function savePublicUpload(buffer, originalName, folder) {
 	const dir = String(folder || "").replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 	if (!UPLOAD_FOLDERS.has(dir)) throw fail("上传目录不允许");
-	const ext = path.extname(originalName || "").toLowerCase().slice(0, 10);
+	const optimized = dir === "site" ? await optimizeSiteAsset(buffer, originalName || "") : await optimizeImage(buffer, originalName || "");
+	const ext = optimized.ext.slice(0, 10);
 	const safeExt = /^\.[a-z0-9]+$/.test(ext) ? ext : "";
 	const filename = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}${safeExt}`;
 	const rel = dir ? `public/uploads/${dir}/${filename}` : `public/uploads/${filename}`;
 	const { abs } = sitePath(rel);
 	fs.mkdirSync(path.dirname(abs), { recursive: true });
-	fs.writeFileSync(abs, buffer);
+	fs.writeFileSync(abs, optimized.buffer);
 	return { url: `/${rel.replace(/^public\//, "")}` };
 }
 
@@ -363,13 +416,15 @@ export function removeAlbum(id) {
 	fs.rmSync(dir.abs, { recursive: true, force: true });
 }
 
-export function saveAlbumPhoto(id, buffer, originalName) {
+export async function saveAlbumPhoto(id, buffer, originalName) {
 	const dir = albumDir(id);
 	if (!fs.existsSync(dir.abs)) throw fail("相册不存在", 404);
-	const ext = path.extname(originalName || "").toLowerCase();
-	if (!IMAGE_EXT.has(ext)) throw fail("只能上传图片");
+	const rawExt = path.extname(originalName || "").toLowerCase();
+	if (!IMAGE_EXT.has(rawExt)) throw fail("只能上传图片");
+	const optimized = await optimizeImage(buffer, originalName || "");
+	const ext = optimized.ext || rawExt;
 	const filename = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}${ext}`;
-	fs.writeFileSync(path.join(dir.abs, filename), buffer);
+	fs.writeFileSync(path.join(dir.abs, filename), optimized.buffer);
 	return { url: `/images/albums/${dir.id}/${filename}`, name: filename };
 }
 

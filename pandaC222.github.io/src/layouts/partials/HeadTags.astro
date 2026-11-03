@@ -91,6 +91,18 @@ const favicons: Favicon[] =
 		/>
 	))
 }
+{
+	siteConfig.appleTouchIcon && (
+		<link
+			rel="apple-touch-icon"
+			href={
+				siteConfig.appleTouchIcon.startsWith("/")
+					? url(siteConfig.appleTouchIcon)
+					: siteConfig.appleTouchIcon
+			}
+		/>
+	)
+}
 
 <!-- 字体通过构建脚本压缩到 /assets/font/ 目录，此处不再预加载以避免 404 -->
 <!-- 字体在构建时通过 scripts/compress-fonts.js 处理并复制到 dist/ -->
