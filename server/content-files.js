@@ -301,6 +301,18 @@ export async function savePublicUpload(buffer, originalName, folder) {
 	const { abs } = sitePath(rel);
 	fs.mkdirSync(path.dirname(abs), { recursive: true });
 	fs.writeFileSync(abs, optimized.buffer);
+
+	// 主题的 Navbar 对 .png 图标会自动去找同名 .webp（<picture><source srcset=...>），
+	// 找不到就整张图破掉。所以站点图标存 png/jpg 时顺手再写一份 webp 副本。
+	if (dir === "site" && /^\.(png|jpe?g)$/i.test(safeExt)) {
+		try {
+			const webp = await sharp(optimized.buffer).webp({ quality: 90, alphaQuality: 100 }).toBuffer();
+			fs.writeFileSync(abs.replace(/\.(png|jpe?g)$/i, ".webp"), webp);
+		} catch (error) {
+			console.error("[blog2] 生成 webp 副本失败：", error?.message || error);
+		}
+	}
+
 	return { url: `/${rel.replace(/^public\//, "")}` };
 }
 
