@@ -356,6 +356,17 @@ export function listAlbums() {
 				}));
 			const coverFiles = files.filter((file) => COVER_FILE.test(file.name));
 			const photos = files.filter((file) => !COVER_FILE.test(file.name));
+			// 按 info.json 的 order 排（后台拖拽时写的）。
+			// 不排的话，删一张照片 → reload → 顺序退回文件系统顺序，用户排好的就白排了。
+			const order = Array.isArray(info.order) ? info.order : [];
+			if (order.length) {
+				const rank = new Map(order.map((name, i) => [name, i]));
+				photos.sort((a, b) => {
+					const ra = rank.has(a.name) ? rank.get(a.name) : Number.MAX_SAFE_INTEGER;
+					const rb = rank.has(b.name) ? rank.get(b.name) : Number.MAX_SAFE_INTEGER;
+					return ra - rb;
+				});
+			}
 			// 封面优先级和前台一致：info.cover（后台设过）> 文件夹里的 cover.webp/jpg > 第一张照片
 			const manual = typeof info.cover === "string" ? info.cover.trim() : "";
 			const cover = manual || coverFiles[0]?.url || photos[0]?.url || "";
@@ -474,10 +485,20 @@ export function removeAlbumPhoto(id, name) {
 	if (!fs.existsSync(infoPath)) return;
 	try {
 		const raw = JSON.parse(fs.readFileSync(infoPath, "utf8"));
+		let changed = false;
 		if (raw && typeof raw.cover === "string" && raw.cover.trim().endsWith(`/${filename}`)) {
 			delete raw.cover;
-			fs.writeFileSync(infoPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+			changed = true;
 		}
+		// order 里也要去掉这张，否则残留一个已经不存在的文件名
+		if (raw && Array.isArray(raw.order)) {
+			const next = raw.order.filter((item) => item !== filename);
+			if (next.length !== raw.order.length) {
+				raw.order = next;
+				changed = true;
+			}
+		}
+		if (changed) fs.writeFileSync(infoPath, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
 	} catch {
 		/* info.json 读不动就别碰它 */
 	}
