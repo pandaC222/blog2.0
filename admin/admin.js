@@ -417,6 +417,27 @@ function pic(url, poster) {
 	return `<div class="pic${poster ? " poster" : ""}">${url ? `<img src="${esc(img(url))}" alt="" referrerpolicy="no-referrer">` : `<span class="muted">无图</span>`}</div>`;
 }
 
+// 图片放大预览。相册缩略图只有 160px，几十张照片根本分不清谁是谁。
+// ESC、点背景、点关闭都能退出；点图片本身不关（方便看细节）。
+function openLightbox(src, alt = "") {
+	if (!src) return;
+	const overlay = document.createElement("div");
+	overlay.className = "lightbox";
+	overlay.innerHTML = `<img src="${esc(src)}" alt="${esc(alt)}"><button class="btn ghost lightbox-close" type="button">关闭</button>`;
+	const onKey = (event) => {
+		if (event.key === "Escape") close();
+	};
+	const close = () => {
+		overlay.remove();
+		document.removeEventListener("keydown", onKey);
+	};
+	overlay.addEventListener("click", (event) => {
+		if (event.target === overlay || event.target.closest(".lightbox-close")) close();
+	});
+	document.addEventListener("keydown", onKey);
+	document.body.append(overlay);
+}
+
 /* 相册封面。前台 album-scanner 的优先级是 info.cover（后台写）> 文件夹里的
    cover.webp/cover.jpg > 第一张照片。后台只动 info.cover，所以要如实说明
    当前这张图是从哪来的，用户才知道「恢复默认」会退到什么。 */
@@ -2274,6 +2295,7 @@ async function renderAlbums(panel) {
 			const grid = card.querySelector(".photo-grid");
 			if (grid) {
 				let dragging = null;
+				let lastDragEnd = 0;
 				const persistOrder = async () => {
 					const order = [...grid.querySelectorAll("figure[data-name]")].map((el) => el.dataset.name);
 					try {
@@ -2307,7 +2329,30 @@ async function renderAlbums(panel) {
 					if (!dragging) return;
 					dragging.classList.remove("dragging");
 					dragging = null;
+					lastDragEnd = Date.now();
 					await persistOrder();
+				});
+
+				// 不用 click 监听：figure 是 draggable 的，Chrome 在可拖拽元素上
+				// 按下再抬起常常不派发 click（拖拽状态把 click 吞了）。
+				// 改成判断 mousedown→mouseup 是否「原地没动」。
+				let downPoint = null;
+				grid.addEventListener("mousedown", (event) => {
+					const figure = event.target.closest("figure[data-name]");
+					if (!figure) return;
+					downPoint = { x: event.clientX, y: event.clientY, at: Date.now() };
+				});
+				grid.addEventListener("mouseup", (event) => {
+					const figure = event.target.closest("figure[data-name]");
+					const start = downPoint;
+					downPoint = null;
+					if (!figure || !start) return;
+					if (event.target.closest(".photo-ops")) return; // 点在按钮上不算看图
+					const moved = Math.abs(event.clientX - start.x) + Math.abs(event.clientY - start.y);
+					if (moved > 6 || Date.now() - start.at > 600) return; // 拖动或长按，不当点击
+					const picture = figure.querySelector("img");
+					if (!picture) return;
+					openLightbox(picture.currentSrc || picture.src, picture.alt || "");
 				});
 			}
 			const send = async (list) => {
