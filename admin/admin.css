@@ -464,7 +464,10 @@ html.dark .savebar { box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45); }
 .cover-pick-body { min-width: 0; padding-top: 2px; }
 .cover-pick .cover-hint { margin: 0 0 8px; font-size: 0.8rem; color: var(--text-50); }
 
-.photo-grid figure { position: relative; width: 132px; }
+.photo-grid figure { position: relative; width: 132px; cursor: grab; }
+.photo-grid figure:active { cursor: grabbing; }
+.photo-grid figure.dragging { opacity: 0.45; }
+.photo-grid figure.dragging img { transform: scale(0.96); }
 .photo-grid img { width: 132px; height: 99px; }
 .photo-grid figure.is-cover img { outline: 2px solid var(--primary); outline-offset: -2px; }
 .photo-ops { display: flex; gap: 4px; margin-top: 4px; }

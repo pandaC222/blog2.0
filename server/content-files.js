@@ -393,6 +393,26 @@ export function setAlbumCover(id, name) {
 	return { id: dir.id, cover: album?.cover || "", coverSource: album?.coverSource || "none" };
 }
 
+// 相册照片顺序。只写 info.json 的 order 字段，不动其它字段，
+// 前台 album-scanner 会按这个数组排（没列到的排后面）。
+export function saveAlbumOrder(id, order) {
+	const dir = albumDir(id);
+	if (!fs.existsSync(dir.abs)) throw fail("相册不存在", 404);
+	const infoPath = path.join(dir.abs, "info.json");
+	let info = {};
+	if (fs.existsSync(infoPath)) {
+		try {
+			const raw = JSON.parse(fs.readFileSync(infoPath, "utf8"));
+			if (raw && typeof raw === "object") info = raw;
+		} catch {
+			/* 原文件损坏时重建 */
+		}
+	}
+	info.order = Array.isArray(order) ? order.map((name) => String(name)).filter(Boolean) : [];
+	fs.writeFileSync(infoPath, JSON.stringify(info, null, 2) + "\n", "utf8");
+	return { ok: true, count: info.order.length };
+}
+
 export function saveAlbum(id, info) {
 	const dir = albumDir(id);
 	fs.mkdirSync(dir.abs, { recursive: true });

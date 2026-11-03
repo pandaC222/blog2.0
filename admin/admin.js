@@ -438,8 +438,10 @@ function coverPickHtml(album) {
 
 function photoFigureHtml(photo, cover) {
 	const isCover = Boolean(cover) && String(cover).endsWith(`/${photo.name}`);
-	return `<figure data-name="${esc(photo.name)}"${isCover ? ' class="is-cover"' : ""}>
-		<img src="${esc(img(photo.url))}" alt="" referrerpolicy="no-referrer">
+	// draggable 放在 figure 上、图片设 draggable="false"，
+	// 否则浏览器会去拖「图片」而不是「这一格」，排序事件就冒不上来
+	return `<figure data-name="${esc(photo.name)}" draggable="true" title="拖动可调整顺序"${isCover ? ' class="is-cover"' : ""}>
+		<img src="${esc(img(photo.url))}" alt="" draggable="false" referrerpolicy="no-referrer">
 		${isCover ? '<span class="cover-flag">封面</span>' : ""}
 		<div class="photo-ops">
 			<button class="btn" type="button" data-set-cover="${esc(photo.name)}">设为封面</button>
@@ -2266,6 +2268,48 @@ async function renderAlbums(panel) {
 			const card = body.querySelector("#edit");
 			const drop = card.querySelector(".drop");
 			drop.onclick = () => card.querySelector("[data-file]").click();
+
+			// 照片拖拽排序：拖动时先就地移动 DOM，松手后把最终顺序写进 info.json。
+			// 前台 album-scanner 按这个数组排；新建/上传的新照片不在数组里，会排在最后。
+			const grid = card.querySelector(".photo-grid");
+			if (grid) {
+				let dragging = null;
+				const persistOrder = async () => {
+					const order = [...grid.querySelectorAll("figure[data-name]")].map((el) => el.dataset.name);
+					try {
+						await api(`/api/admin/albums/${encodeURIComponent(editing)}/order`, {
+							method: "PUT",
+							body: { order },
+						});
+						toast("顺序已保存（前台需重建后生效）");
+					} catch (error) {
+						toast(error.message, "err");
+					}
+				};
+				grid.addEventListener("dragstart", (event) => {
+					const figure = event.target.closest("figure[data-name]");
+					if (!figure) return;
+					dragging = figure;
+					figure.classList.add("dragging");
+					event.dataTransfer.effectAllowed = "move";
+					event.dataTransfer.setData("text/plain", figure.dataset.name); // Firefox 不设就不拖
+				});
+				grid.addEventListener("dragover", (event) => {
+					if (!dragging) return;
+					event.preventDefault();
+					const target = event.target.closest("figure[data-name]");
+					if (!target || target === dragging) return;
+					const rect = target.getBoundingClientRect();
+					const after = event.clientX - rect.left > rect.width / 2;
+					grid.insertBefore(dragging, after ? target.nextElementSibling : target);
+				});
+				grid.addEventListener("dragend", async () => {
+					if (!dragging) return;
+					dragging.classList.remove("dragging");
+					dragging = null;
+					await persistOrder();
+				});
+			}
 			const send = async (list) => {
 				try {
 					for (const picked of list) {

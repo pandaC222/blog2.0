@@ -1,6 +1,8 @@
 export interface Photo {
 	id?: string;
 	src: string;
+	/** 原始文件名（本地相册才有），用于 info.json 的 order 排序 */
+	file?: string;
 	alt?: string;
 	title?: string;
 	thumbnail?: string;

@@ -13,6 +13,7 @@ import {
 	removeAlbumPhoto,
 	removePostFile,
 	saveAlbum,
+	saveAlbumOrder,
 	saveAlbumPhoto,
 	savePublicUpload,
 	setAlbumCover,
@@ -344,6 +345,15 @@ export function registerAdminContent(app, requireAuth) {
 	app.post("/api/admin/albums/:id/cover", requireAuth, (req, res) => {
 		try {
 			res.json({ ok: true, ...setAlbumCover(req.params.id, req.body?.name) });
+		} catch (error) {
+			sendError(res, error);
+		}
+	});
+
+	// 照片排序：只写 info.json 的 order，不动标题等信息
+	app.put("/api/admin/albums/:id/order", requireAuth, (req, res) => {
+		try {
+			res.json(saveAlbumOrder(req.params.id, req.body?.order));
 		} catch (error) {
 			sendError(res, error);
 		}

@@ -80,7 +80,7 @@ async function processAlbumFolder(
 	} else {
 		// 本地模式：先扫照片；再无封面时用第一张图兜底，避免后台新建相册前台不显示。
 		// 封面优先级：info.cover（后台「设为封面」写的）> 文件夹里的 cover.webp/cover.jpg > 第一张图。
-		photos = scanPhotos(folderPath, folderName);
+		photos = scanPhotos(folderPath, folderName, Array.isArray(info.order) ? info.order.map(String) : []);
 		const webpCover = path.join(folderPath, "cover.webp");
 		const jpgCover = path.join(folderPath, "cover.jpg");
 		const manualCover = hasManualCover(info.cover) ? info.cover.trim() : "";
@@ -117,7 +117,7 @@ async function processAlbumFolder(
 	};
 }
 
-function scanPhotos(folderPath: string, albumId: string): Photo[] {
+function scanPhotos(folderPath: string, albumId: string, order: string[] = []): Photo[] {
 	const photos: Photo[] = [];
 	const files = fs.readdirSync(folderPath);
 
@@ -167,12 +167,24 @@ function scanPhotos(folderPath: string, albumId: string): Photo[] {
 		photos.push({
 			id: `${albumId}-photo-${index}`,
 			src,
+			file,
 			alt: baseName,
 			title: baseName,
 			tags: tags,
 			date: stats.mtime.toISOString().split("T")[0],
 		});
 	});
+
+	// info.json 的 order 是后台拖拽排序后写入的文件名数组。
+	// 按它排；没列进去的（新上传、被手动加进来的）保持原顺序排在后面。
+	if (order.length > 0) {
+		const rank = new Map(order.map((name, i) => [name, i]));
+		photos.sort((a, b) => {
+			const ra = rank.has(a.file ?? "") ? (rank.get(a.file ?? "") as number) : Number.MAX_SAFE_INTEGER;
+			const rb = rank.has(b.file ?? "") ? (rank.get(b.file ?? "") as number) : Number.MAX_SAFE_INTEGER;
+			return ra - rb;
+		});
+	}
 
 	return photos;
 }
