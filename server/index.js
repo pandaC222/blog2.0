@@ -11,7 +11,7 @@ import jwt from "jsonwebtoken";
 import multer from "multer";
 import { db, dbPath, rootDir, uploadsDir, withTransaction } from "./db.js";
 import { registerAdminContent } from "./admin-routes.js";
-import { removePostFile, savePublicUpload, siteRoot, writePostFromRow } from "./content-files.js";
+import { readBoard, removePostFile, savePublicUpload, siteRoot, writePostFromRow } from "./content-files.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env") });
@@ -293,6 +293,22 @@ function getPostBySlug(slug, { includeDraft = false } = {}) {
 
 app.get("/api/health", (_req, res) => {
 	res.json({ ok: true, db: dbPath });
+});
+
+// 站点图标路径（公开，不含敏感信息）。后台页面用它把自己的 favicon
+// 跟「站点设置」里配的保持一致，避免改完图标只有前台变了。
+app.get("/api/site-icon", (_req, res) => {
+	const absolute = (value) => {
+		const href = String(value || "").trim();
+		if (!href) return "";
+		return href.startsWith("/") || /^https?:/i.test(href) ? href : `/${href}`;
+	};
+	try {
+		const data = readBoard("site").data || {};
+		res.json({ favicon: absolute(data.favicon), appleIcon: absolute(data.appleIcon) });
+	} catch {
+		res.json({ favicon: "", appleIcon: "" });
+	}
 });
 
 app.post("/api/admin/login", (req, res) => {

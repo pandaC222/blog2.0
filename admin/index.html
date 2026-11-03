@@ -4,8 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>blog2 后台</title>
-  <link rel="icon" href="/favicon/favicon.ico">
+  <link rel="icon" href="/favicon/icon-32.png">
   <link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png">
+  <script>
+    /* 让后台图标跟随「站点设置」里配的，改完图标不用再手动同步 */
+    fetch("/api/site-icon")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.favicon) document.querySelector('link[rel="icon"]').href = data.favicon;
+        if (data.appleIcon) document.querySelector('link[rel="apple-touch-icon"]').href = data.appleIcon;
+      })
+      .catch(() => {});
+  </script>
   <link rel="stylesheet" href="/admin/admin.css">
   <script>
     /* 先于绘制设置色相和深色，避免闪一下亮色 */
