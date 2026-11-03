@@ -1,7 +1,9 @@
 ---
 import type { PhotoCardProps } from "./types";
 
-const { src, alt = "", albumId } = Astro.props as PhotoCardProps;
+const { src, thumb, alt = "", albumId } = Astro.props as PhotoCardProps;
+// 列表用缩略图（几十 KB），点开 fancybox 才加载原图（data-src）
+const listSrc = thumb || src;
 ---
 
 <div class="gallery-photo-card break-inside-avoid mb-3">
@@ -12,7 +14,7 @@ const { src, alt = "", albumId } = Astro.props as PhotoCardProps;
 		class="block rounded-xl overflow-hidden group cursor-pointer"
 	>
 		<img
-			src={src}
+			src={listSrc}
 			alt={alt}
 			loading="lazy"
 			decoding="async"

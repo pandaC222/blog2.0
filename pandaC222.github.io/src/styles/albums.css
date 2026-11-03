@@ -15,6 +15,19 @@
   align-items: start;
 }
 
+/* JS 瀑布流接管后的状态：卡片绝对定位，按「最矮列优先」摆放，
+   这样既紧凑（不留竖向空洞）又保持从左到右的顺序 */
+.gallery-masonry.is-masonry {
+  display: block;
+  position: relative;
+}
+
+.gallery-masonry.is-masonry .gallery-photo-card {
+  position: absolute;
+  margin: 0;
+  transition: left 200ms ease, top 200ms ease;
+}
+
 .gallery-masonry .gallery-photo-card {
   break-inside: avoid;
 }

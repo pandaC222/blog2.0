@@ -139,9 +139,18 @@ function scanPhotos(folderPath: string, albumId: string, order: string[] = []): 
 		return (
 			imageExtensions.includes(ext) &&
 			file !== "cover.jpg" &&
-			file !== "cover.webp"
+			file !== "cover.webp" &&
+			// xxx.thumb.webp 是列表缩略图，不是一张照片
+			!/\.thumb\.(webp|jpe?g)$/i.test(file)
 		);
 	});
+
+	// 缩略图集合，用来给每张照片挂 thumb（没有就不挂，前台回退到原图）
+	const thumbFiles = new Set(files.filter((file) => /\.thumb\.(webp|jpe?g)$/i.test(file)));
+	const thumbOf = (file: string) => {
+		const candidate = file.replace(/\.[^.]+$/, ".thumb.webp");
+		return thumbFiles.has(candidate) ? `/images/albums/${albumId}/${candidate}` : "";
+	};
 
 	const fileWebpMap = new Map<string, string>();
 	for (const file of imageFiles) {
@@ -168,6 +177,7 @@ function scanPhotos(folderPath: string, albumId: string, order: string[] = []): 
 			id: `${albumId}-photo-${index}`,
 			src,
 			file,
+			thumb: thumbOf(file),
 			alt: baseName,
 			title: baseName,
 			tags: tags,

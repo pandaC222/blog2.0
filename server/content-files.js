@@ -329,6 +329,10 @@ const IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".a
 // 前台 album-scanner 会把这两个文件当成封面、并从照片列表里排除，后台保持一致，
 // 否则后台会把 cover.webp 也数成一张照片，误删还会把封面删掉。
 const COVER_FILE = /^cover\.(webp|jpe?g)$/i;
+// 缩略图（xxx.thumb.webp）不是照片，列表里要排除
+const THUMB_FILE = /\.thumb\.(webp|jpe?g)$/i;
+const THUMB_WIDTH = 480;
+const THUMB_QUALITY = 78;
 
 export function listAlbums() {
 	const root = path.join(siteRoot, "public", "images", "albums");
@@ -347,15 +351,21 @@ export function listAlbums() {
 					/* keep default */
 				}
 			}
-			const files = fs
+			const allNames = fs
 				.readdirSync(dir, { withFileTypes: true })
 				.filter((file) => file.isFile() && IMAGE_EXT.has(path.extname(file.name).toLowerCase()))
-				.map((file) => ({
-					name: file.name,
-					url: `/images/albums/${entry.name}/${file.name}`,
-				}));
+				.map((file) => file.name);
+			const thumbNames = new Set(allNames.filter((name) => THUMB_FILE.test(name)));
+			const files = allNames.map((name) => {
+				const candidate = name.replace(/\.[^.]+$/, ".thumb.webp");
+				return {
+					name,
+					url: `/images/albums/${entry.name}/${name}`,
+					thumb: thumbNames.has(candidate) ? `/images/albums/${entry.name}/${candidate}` : "",
+				};
+			});
 			const coverFiles = files.filter((file) => COVER_FILE.test(file.name));
-			const photos = files.filter((file) => !COVER_FILE.test(file.name));
+			const photos = files.filter((file) => !COVER_FILE.test(file.name) && !THUMB_FILE.test(file.name));
 			// 按 info.json 的 order 排（后台拖拽时写的）。
 			// 不排的话，删一张照片 → reload → 顺序退回文件系统顺序，用户排好的就白排了。
 			const order = Array.isArray(info.order) ? info.order : [];
@@ -467,7 +477,21 @@ export async function saveAlbumPhoto(id, buffer, originalName) {
 	const optimized = await optimizeImage(buffer, originalName || "");
 	const ext = optimized.ext || rawExt;
 	const filename = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}${ext}`;
-	fs.writeFileSync(path.join(dir.abs, filename), optimized.buffer);
+	const abs = path.join(dir.abs, filename);
+	fs.writeFileSync(abs, optimized.buffer);
+
+	// 列表缩略图：相册一页几十张，原图直出首屏要下十几 MB。
+	// 命名 xxx.thumb.webp，和原图同目录，扫描时排除。
+	try {
+		const thumb = await sharp(optimized.buffer)
+			.resize({ width: THUMB_WIDTH, withoutEnlargement: true })
+			.webp({ quality: THUMB_QUALITY })
+			.toBuffer();
+		fs.writeFileSync(abs.replace(/\.[^.]+$/, ".thumb.webp"), thumb);
+	} catch (error) {
+		console.error("[blog2] 生成缩略图失败：", error?.message || error);
+	}
+
 	return { url: `/images/albums/${dir.id}/${filename}`, name: filename };
 }
 

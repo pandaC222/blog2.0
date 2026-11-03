@@ -6,6 +6,8 @@ export interface AlbumCardProps {
 
 export interface PhotoCardProps {
 	src: string;
+	/** 列表缩略图，留空则用 src */
+	thumb?: string;
 	alt?: string;
 	albumId: string;
 }
