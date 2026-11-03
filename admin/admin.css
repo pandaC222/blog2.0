@@ -704,3 +704,50 @@ html.dark {
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* 重建进度：构建时长未知，用不确定进度的滑条 + 秒数 */
+.rebuild-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 300;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  pointer-events: none;
+}
+.rebuild-bar[data-on="1"] { opacity: 1; }
+.rebuild-track {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--primary) 16%, transparent);
+}
+.rebuild-track i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 36%;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: rebuild-slide 1.3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes rebuild-slide {
+  from { left: -38%; }
+  to { left: 100%; }
+}
+.rebuild-text {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 12%, var(--page-bg));
+  border: 1px solid color-mix(in oklab, var(--primary) 28%, transparent);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}

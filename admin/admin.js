@@ -145,8 +145,13 @@ async function api(path, options = {}) {
 	}
 	if (!res.ok) throw new Error(data.error || res.statusText);
 	// 内容保存会写回 .md/.yml，而前台是静态站，不重建就不会变。
+	// 相册的照片列表也是构建时扫描的，所以 albums 相关操作同样要重建。
 	// 这里只负责发起，不等结果，失败也不打断保存。
-	if (options.method && options.method !== "GET" && path.startsWith("/api/admin/content/")) {
+	if (
+		options.method &&
+		options.method !== "GET" &&
+		(path.startsWith("/api/admin/content/") || path.startsWith("/api/admin/albums/"))
+	) {
 		queueRebuild();
 	}
 	return data;
@@ -159,12 +164,67 @@ function queueRebuild() {
 	rebuildTimer = setTimeout(async () => {
 		try {
 			const result = await api("/api/admin/rebuild", { method: "POST" });
-			if (!result.queued) toast("前台已开始重建，约 1-2 分钟后刷新可见");
+			if (!result.queued) toast("前台开始重建，进度见顶部");
+			watchRebuild();
 		} catch (error) {
 			// 没配 REBUILD_CMD（比如纯本地开发）不算错误，静默跳过
 			if (!/未配置/.test(error.message)) toast("重建失败：" + error.message, "err");
 		}
 	}, 1500);
+}
+
+// ---- 重建进度 ----
+// 构建是异步的，后台只能轮询状态，拿不到百分比。
+// 用一条不确定进度的滑条 + 已用秒数，比干等一个 toast 强。
+let watchTimer = 0;
+let watchStart = 0;
+
+function ensureRebuildBar() {
+	let bar = document.querySelector("#rebuild-bar");
+	if (bar) return bar;
+	bar = document.createElement("div");
+	bar.id = "rebuild-bar";
+	bar.className = "rebuild-bar";
+	bar.innerHTML = `<div class="rebuild-track"><i></i></div><span class="rebuild-text"></span>`;
+	document.body.append(bar);
+	return bar;
+}
+
+function stopRebuildWatch() {
+	clearInterval(watchTimer);
+	watchTimer = 0;
+	const bar = document.querySelector("#rebuild-bar");
+	if (bar) bar.dataset.on = "";
+}
+
+async function watchRebuild() {
+	const bar = ensureRebuildBar();
+	bar.dataset.on = "1";
+	bar.querySelector(".rebuild-text").textContent = "正在重建前台…";
+	watchStart = Date.now();
+	clearInterval(watchTimer);
+
+	const tick = async () => {
+		const secs = Math.round((Date.now() - watchStart) / 1000);
+		let state = null;
+		try {
+			state = await api("/api/admin/rebuild");
+		} catch {
+			/* 查询失败就继续等 */
+		}
+		// 刚点完时后台可能还没把 running 置起来，前 5 秒不判结束
+		if (state?.running || secs < 5) {
+			bar.querySelector(".rebuild-text").textContent = `正在重建前台… ${secs}s`;
+			return;
+		}
+		stopRebuildWatch();
+		if (state?.ok) toast(`前台已更新（用时 ${secs}s）`);
+		else if (state?.error) toast(`构建失败：${String(state.error).slice(0, 90)}`, "err");
+	};
+
+	// 等一会儿让构建真正启动，避免第一轮就判断成"已结束"
+	setTimeout(tick, 2500);
+	watchTimer = setInterval(tick, 2000);
 }
 
 function esc(value) {
