@@ -6,30 +6,24 @@
 }
 
 /* 瀑布流布局 */
-/* 用 grid 而不是 CSS 多列：多列是竖着填的，后台排在第 1、2、3 位的照片
-   会分别落到三列的顶部，视觉上看起来"顺序乱了"。grid 严格从左到右按顺序排。 */
+/* 统一方块：所有缩略图裁成同样的 4:3，格子整齐、顺序严格从左到右。
+   长图/竖图被裁掉的部分点开 fancybox 看原图。 */
 .gallery-masonry {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 0.75rem;
-  align-items: start;
-}
-
-/* JS 瀑布流接管后的状态：卡片绝对定位，按「最矮列优先」摆放，
-   这样既紧凑（不留竖向空洞）又保持从左到右的顺序 */
-.gallery-masonry.is-masonry {
-  display: block;
-  position: relative;
-}
-
-.gallery-masonry.is-masonry .gallery-photo-card {
-  position: absolute;
-  margin: 0;
-  transition: left 200ms ease, top 200ms ease;
 }
 
 .gallery-masonry .gallery-photo-card {
   break-inside: avoid;
+  /* 卡片自带 mb-3，和 grid 的 gap 会叠加，去掉 */
+  margin-bottom: 0;
+}
+
+.gallery-masonry .gallery-photo-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
 }
 
 /* 照片网格加载动画 */

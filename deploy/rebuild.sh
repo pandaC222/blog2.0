@@ -21,8 +21,17 @@ export PATH="$SITE_DIR/node_modules/.bin:$PATH"
 
 cd "$SITE_DIR"
 
-rm -rf dist.tmp
-astro build --outDir dist.tmp
+# 这台机器 1.7G 内存，astro build 偶发 SIGABRT（Aborted / core dumped），
+# 重跑一次基本都能过。失败了不会切 dist，站点始终可用。
+run_build() {
+    rm -rf dist.tmp
+    astro build --outDir dist.tmp
+}
+if ! run_build; then
+    echo "[rebuild] 第一次构建失败，5 秒后重试"
+    sleep 5
+    run_build
+fi
 pagefind --site dist.tmp
 
 rm -rf dist.old
