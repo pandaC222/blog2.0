@@ -6,9 +6,13 @@
 }
 
 /* 瀑布流布局 */
+/* 用 grid 而不是 CSS 多列：多列是竖着填的，后台排在第 1、2、3 位的照片
+   会分别落到三列的顶部，视觉上看起来"顺序乱了"。grid 严格从左到右按顺序排。 */
 .gallery-masonry {
-  column-width: 240px;
-  column-gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+  align-items: start;
 }
 
 .gallery-masonry .gallery-photo-card {
@@ -47,15 +51,15 @@
   }
 }
 
-/* 响应式瀑布流 */
+/* 响应式列宽 */
 @media (max-width: 768px) {
   .gallery-masonry {
-    column-width: 180px;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 }
 
 @media (max-width: 480px) {
   .gallery-masonry {
-    column-width: 140px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   }
 }
