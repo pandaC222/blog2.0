@@ -811,45 +811,6 @@ function splitPublished(value) {
 	return { date: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : "", time: text.includes("T") ? time : "" };
 }
 
-function mdPreview(source) {
-	const escaped = esc(source).replaceAll("\r\n", "\n");
-	const blocks = [];
-	const text = escaped.replace(/```([\s\S]*?)```/g, (_, code) => {
-		blocks.push(`<pre><code>${code.replace(/^\n/, "")}</code></pre>`);
-		return `\n@@${blocks.length - 1}@@\n`;
-	});
-	const html = text
-		.split(/\n{2,}/)
-		.map((part) => {
-			if (/^@@\d+@@$/.test(part.trim())) return part.trim();
-			let line = part;
-			line = line
-				.replace(/^###### (.*)$/gm, "<h6>$1</h6>")
-				.replace(/^##### (.*)$/gm, "<h5>$1</h5>")
-				.replace(/^#### (.*)$/gm, "<h4>$1</h4>")
-				.replace(/^### (.*)$/gm, "<h3>$1</h3>")
-				.replace(/^## (.*)$/gm, "<h2>$1</h2>")
-				.replace(/^# (.*)$/gm, "<h1>$1</h1>");
-			line = line.replace(/^&gt; (.*)$/gm, "<blockquote>$1</blockquote>");
-			line = line.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => `<img alt="${alt}" src="${img(src)}" referrerpolicy="no-referrer">`);
-			line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-			line = line.replace(/`([^`]+)`/g, "<code>$1</code>");
-			line = line.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*]+)\*/g, "$1<em>$2</em>");
-			if (/^(?:- |\d+\. )/m.test(line)) {
-				const ordered = /^\d+\. /m.test(line);
-				const items = line
-					.split("\n")
-					.map((item) => `<li>${item.replace(/^(- |\d+\. )/, "")}</li>`)
-					.join("");
-				return ordered ? `<ol>${items}</ol>` : `<ul>${items}</ul>`;
-			}
-			if (/^<h\d/.test(line) || line.startsWith("<blockquote")) return line;
-			return `<p>${line.replaceAll("\n", "<br>")}</p>`;
-		})
-		.join("\n");
-	return html.replace(/@@(\d+)@@/g, (_, index) => blocks[Number(index)] || "");
-}
-
 function insertAt(textarea, before, after = "") {
 	const start = textarea.selectionStart;
 	const end = textarea.selectionEnd;
@@ -909,7 +870,6 @@ async function renderPostEditor(slug) {
 				</div>
 				<div class="editor">
 					<textarea name="body">${esc(file.body || "")}</textarea>
-					<div class="preview" id="preview"></div>
 				</div>
 				<p class="hint">表单没展示的 frontmatter 会保留。</p>
 			</section>
@@ -930,12 +890,6 @@ async function renderPostEditor(slug) {
 		</form>`;
 	const form = panel.querySelector("#post");
 	const bodyBox = form.elements.body;
-	const preview = panel.querySelector("#preview");
-	const paint = () => {
-		preview.innerHTML = mdPreview(bodyBox.value);
-	};
-	bodyBox.addEventListener("input", paint);
-	paint();
 	form.querySelectorAll("[data-wrap]").forEach((button) => {
 		button.onclick = () => {
 			const wrap = button.dataset.wrap;
